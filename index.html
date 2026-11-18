@@ -135,20 +135,6 @@ showHome();
   );
 
   console.log("Patitas: cliente Supabase inicializado");
-  
-async function probarConexion() {
-  const { data, error } = await supabaseClient
-    .from("pets")
-    .select("*")
-    .limit(5);
-
-  console.log("Mascotas:", data);
-  console.log("Error:", error);
-}
-
-probarConexion();
-
 </script>
-
 </body>
 </html>
