@@ -45,8 +45,12 @@
   <button class="btn light small" onclick="showHome()">← Volver</button>
   <div style="text-align:center;margin:18px 0"><div class="paw" style="margin:auto;width:55px;height:55px;font-size:30px">🐾</div><h1>¡Hola, Petlover!</h1><p class="muted">Ingresa para continuar en Patitas.</p></div>
   <form onsubmit="login(event)">
-   <div class="field"><label>Nombre o correo electrónico</label><input id="loginName" placeholder="Ej. Ana Torres" required></div>
-   <div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Ingresa cualquier contraseña" required></div>
+<div class="field">
+  <label>Correo electrónico</label>
+  <input id="loginName" type="email"
+         placeholder="ejemplo@correo.com" required>
+</div>
+  <div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" required></div>
    <div class="field"><label>Tipo de cuenta</label><div class="role-select">
     <button type="button" class="role-option active" data-role="owner" onclick="chooseRole('owner')">🐕<br>Dueño</button>
     <button type="button" class="role-option" data-role="shelter" onclick="chooseRole('shelter')">🏡<br>Albergue</button>
@@ -54,8 +58,60 @@
    </div></div>
    <button class="btn" style="width:100%;margin-top:10px">Ingresar a Patitas</button>
   </form>
-  <p class="muted" style="font-size:12px;text-align:center;margin:16px 0 0">Prototipo demostrativo: puedes ingresar con datos de prueba.</p>
+<p class="muted" style="text-align:center;margin-top:18px">
+  ¿Todavía no tienes una cuenta?
+</p>
+<button
+  type="button"
+  class="btn light"
+  style="width:100%"
+  onclick="mostrarRegistro()"
+>
+  Crear cuenta en Patitas
+</button>
  </div>
+</section>
+  <section id="registerView" class="login-wrap hidden">
+  <div class="login-card">
+    <button class="btn light small" onclick="showLogin()">
+      ← Volver a ingresar
+    </button>
+    <h1>🐾 Crear cuenta</h1>
+    <p class="muted">Únete a la comunidad Patitas.</p>
+    <form onsubmit="registrarUsuario(event)">
+      <div class="field">
+        <label>Nombre completo</label>
+        <input id="registerName" required>
+      </div>
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input id="registerEmail" type="email" required>
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input id="registerPassword"
+               type="password"
+               minlength="6"
+               required>
+      </div>
+      <div class="field">
+        <label>Tipo de cuenta</label>
+        <select id="registerRole">
+          <option value="dueno">Dueño de mascota</option>
+          <option value="albergue">Albergue (requiere aprobación)</option>
+          <option value="negocio">Negocio PET (requiere aprobación)</option>
+        </select>
+      </div>
+
+      <button class="btn" style="width:100%" type="submit">
+        Registrarme
+      </button>
+    </form>
+    <p class="muted" style="font-size:12px;margin-top:15px">
+      Las cuentas de albergues y negocios PET
+      requieren aprobación antes de obtener esos permisos.
+    </p>
+  </div>
 </section>
 <section id="dashboardView" class="dashboard hidden">
  <aside class="sidebar"><div class="user-mini"><div class="avatar" id="sideAvatar">🐕</div><div><strong id="sideName">Usuario</strong><small id="sideRole">Dueño de mascota</small></div></div><nav class="nav" id="nav"></nav></aside>
@@ -82,10 +138,113 @@ let products=[
 let requests=['Solicitud de adopción de Max','Consulta sobre campaña de donación','Nueva consulta de servicio'];
 function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover'}
 function showLogin(role='owner'){hideViews();document.getElementById('loginView').classList.remove('hidden');chooseRole(role)}
-function hideViews(){['homeView','loginView','dashboardView'].forEach(id=>document.getElementById(id).classList.add('hidden'))}
+function hideViews(){
+  ['homeView','loginView','registerView','dashboardView']
+    .forEach(id=>document.getElementById(id).classList.add('hidden'));
+}
+function mostrarRegistro(){
+  hideViews();
+  document.getElementById('registerView').classList.remove('hidden');
+}
+async function registrarUsuario(event) {
+  event.preventDefault();
+  const nombre = document.getElementById('registerName').value.trim();
+  const correo = document.getElementById('registerEmail').value.trim();
+  const contrasena = document.getElementById('registerPassword').value;
+  const tipo = document.getElementById('registerRole').value;
+  if (!nombre || !correo || contrasena.length < 6) {
+    alert('Completa todos los datos correctamente.');
+    return;
+  }
+  const boton = event.submitter;
+  if (boton) boton.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: correo,
+      password: contrasena,
+      options: {
+        data: {
+          full_name: nombre
+        }
+      }
+    });
+    if (error) throw error;
+    if (!data.user) {
+      alert('No se pudo completar el registro.');
+      return;
+    }
+    if (tipo !== 'dueno') {
+      alert(
+        'Tu cuenta se ha creado como dueño de mascota. ' +
+        'Después de confirmar tu correo e iniciar sesión, ' +
+        'podrás enviar tu solicitud para ser albergue o negocio PET.'
+      );
+    } else {
+      alert('Registro recibido. Revisa tu correo para confirmar tu cuenta.');
+    }
+    showLogin();
+  } catch (error) {
+    alert('Error al registrarse: ' + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
 function chooseRole(role){currentRole=role;document.querySelectorAll('.role-option').forEach(b=>b.classList.toggle('active',b.dataset.role===role))}
-function login(e){e.preventDefault();currentUser=document.getElementById('loginName').value.trim();if(!currentUser)return;hideViews();document.getElementById('dashboardView').classList.remove('hidden');document.getElementById('headerLogin').classList.add('hidden');document.getElementById('headerLogout').classList.remove('hidden');document.getElementById('headerRole').textContent=roleNames[currentRole];document.getElementById('sideName').textContent=currentUser;document.getElementById('sideRole').textContent=roleNames[currentRole];document.getElementById('sideAvatar').textContent=roleIcons[currentRole];activePage='inicio';renderNav();renderPage()}
-function logout(){currentUser=null;showHome();toast('Sesión cerrada')}
+async function login(e) {
+  e.preventDefault();
+  const correo = document.getElementById('loginName').value.trim();
+  const contrasena = document.getElementById('loginPassword').value;
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: correo,
+      password: contrasena
+    });
+    if (error) throw error;
+    const { data: perfil, error: perfilError } = await supabaseClient
+      .from('profiles')
+      .select('full_name, user_type')
+      .eq('id', data.user.id)
+      .single();
+    if (perfilError || !perfil) {
+      await supabaseClient.auth.signOut();
+      throw new Error('No se pudo obtener tu perfil.');
+    }
+    const tipos = {
+      dueno: 'owner',
+      albergue: 'shelter',
+      negocio: 'business'
+    };
+    currentUser = perfil.full_name || correo;
+    currentRole = tipos[perfil.user_type] || 'owner';
+    hideViews();
+    document.getElementById('dashboardView').classList.remove('hidden');
+    document.getElementById('headerLogin').classList.add('hidden');
+    document.getElementById('headerLogout').classList.remove('hidden');
+    document.getElementById('headerRole').textContent = roleNames[currentRole];
+    document.getElementById('sideName').textContent = currentUser;
+    document.getElementById('sideRole').textContent = roleNames[currentRole];
+    document.getElementById('sideAvatar').textContent = roleIcons[currentRole];
+    activePage = 'inicio';
+    renderNav();
+    renderPage();
+  } catch (error) {
+    alert('No se pudo iniciar sesión: ' + error.message);
+  }
+}
+async function logout() {
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    alert('No se pudo cerrar sesión: ' + error.message);
+    return;
+  }
+
+  currentUser = null;
+  currentRole = 'owner';
+
+  showHome();
+  toast('Sesión cerrada correctamente');
+}
 function renderNav(){let items=currentRole==='owner'?['Inicio','Mis mascotas','Adopciones','Servicios y productos','Comunidad','Mi perfil']:currentRole==='shelter'?['Inicio','Mascotas','Solicitudes','Donaciones','Campañas','Mi perfil']:['Inicio','Productos y servicios','Solicitudes','Promociones','Mi negocio','Mi perfil'];document.getElementById('nav').innerHTML=items.map((x,i)=>`<button class="${(i===0&&activePage==='inicio')?'active':''}" onclick="navigate('${x}')">${['⌂','🐾','♡','▣','✦','◉'][i]} &nbsp;${x}</button>`).join('')}
 function navigate(page){activePage=page.toLowerCase();renderNav();renderPage()}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
@@ -110,7 +269,40 @@ root.innerHTML=html}
 function petTile(emoji,name,detail,status,adopt=false){return `<article class="pet-card"><div class="pet-photo">${emoji}</div><div class="pet-info"><h3>${escapeHtml(name)}</h3><p>${escapeHtml(detail)}</p><span class="tag">${status}</span>${adopt?`<button class="btn small" style="width:100%;margin-top:11px" onclick="toast('¡Interés registrado! El albergue podrá contactarte.')">${currentRole==='owner'?'Me interesa':'Ver publicación'}</button>`:''}</div></article>`}
 function feed(emoji,title,desc){return `<div class="feed-item"><div class="emoji">${emoji}</div><div><strong>${title}</strong><p>${desc}</p></div></div>`}
 function productRow(p){return `<div class="product-row"><div class="product-left"><div class="product-emoji">${p.emoji}</div><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.category)}</small></div></div><span class="price">${p.price}</span></div>`}
-function openCreate(){let isPet=currentRole!=='business';document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>${isPet?'Publicar mascota':'Agregar producto o servicio'}</h2><button class="close" onclick="closeModal()">✕</button></div><form onsubmit="saveNew(event,${isPet})"><div class="field"><label>${isPet?'Nombre de la mascota':'Nombre del producto o servicio'}</label><input id="newName" required placeholder="${isPet?'Ej. Firulais':'Ej. Baño y grooming'}"></div><div class="field"><label>${isPet?'Tipo y edad':'Categoría'}</label><input id="newDetail" required placeholder="${isPet?'Perro · 2 años':'Cuidado'}"></div>${isPet?'':`<div class="field"><label>Precio</label><input id="newPrice" required placeholder="S/ 50.00">`}</div><button class="btn" style="width:100%">Guardar publicación</button></form></div></div>`}
+function openCreate() {
+  let isPet = currentRole !== 'business';
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>${isPet ? 'Publicar mascota' : 'Agregar producto o servicio'}</h2>
+          <button class="close" onclick="closeModal()">✕</button>
+        </div>
+        <form onsubmit="saveNew(event,${isPet})">
+          <div class="field">
+            <label>${isPet ? 'Nombre de la mascota' : 'Nombre del producto o servicio'}</label>
+            <input id="newName" required
+              placeholder="${isPet ? 'Ej. Firulais' : 'Ej. Baño y grooming'}">
+          </div>
+          <div class="field">
+            <label>${isPet ? 'Tipo y edad' : 'Categoría'}</label>
+            <input id="newDetail" required
+              placeholder="${isPet ? 'Perro · 2 años' : 'Cuidado'}">
+          </div>
+          ${isPet ? '' : `
+            <div class="field">
+              <label>Precio</label>
+              <input id="newPrice" required placeholder="S/ 50.00">
+            </div>
+          `}
+          <button class="btn" style="width:100%">
+            Guardar publicación
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+}
 function saveNew(e,isPet){e.preventDefault();let name=document.getElementById('newName').value,detail=document.getElementById('newDetail').value;if(isPet){pets.unshift({name,kind:detail,place:'Por definir',emoji:detail.toLowerCase().includes('gat')?'🐱':'🐶',status:'En adopción'})}else{products.unshift({name,category:detail,price:document.getElementById('newPrice').value,emoji:'🛍️'})}closeModal();renderPage();toast('¡Publicación agregada correctamente!')}
 function closeModal(){document.getElementById('modalRoot').innerHTML=''}
 function filterPets(){let q=(document.getElementById('petSearch')?.value||'').toLowerCase(),f=document.getElementById('petFilter')?.value||'';let list=pets.filter(p=>(p.name+' '+p.kind+' '+p.place).toLowerCase().includes(q)&&(!f||p.kind.includes(f)));document.getElementById('petResults').innerHTML=list.length?list.map(p=>petTile(p.emoji,p.name,p.kind+' · '+p.place,p.status,true)).join(''):'<div class="empty">No encontramos mascotas con esos filtros.</div>'}
@@ -121,7 +313,6 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function escapeAttr(s){return escapeHtml(s)}
 showHome();
 </script>
-  
 <script>
   const SUPABASE_URL =
     "https://drckgajphlfbztroebih.supabase.co";
