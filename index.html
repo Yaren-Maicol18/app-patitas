@@ -121,5 +121,21 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function escapeAttr(s){return escapeHtml(s)}
 showHome();
 </script>
+  
+<script>
+  const SUPABASE_URL =
+    "https://drckgajphlfbztroebih.supabase.co";
+
+  const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_XK86ruwBF12IKlacbo6LWg_YiKn6z45";
+
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+  console.log("Patitas: cliente Supabase inicializado");
+</script>
+
 </body>
 </html>
