@@ -597,6 +597,134 @@ petTile(
       ).join('')
     : '<div class="empty">No encontramos mascotas con esos filtros.</div>';
 }
+async function editarMascota(petId) {
+  try {
+    const { data: authData, error: authError } =
+      await supabaseClient.auth.getUser();
+    if (authError || !authData.user) {
+      throw new Error('Debes iniciar sesión.');
+    }
+    const { data: mascota, error } = await supabaseClient
+      .from('pets')
+      .select('id, name, species, breed, age, sex, description, location')
+      .eq('id', petId)
+      .eq('owner_id', authData.user.id)
+      .single();
+    if (error || !mascota) {
+      throw new Error('No se pudo encontrar tu mascota.');
+    }
+    document.getElementById('modalRoot').innerHTML = `
+      <div class="modal-backdrop"
+        onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+          <div class="modal-head">
+            <h2>Editar mascota</h2>
+            <button class="close"
+              onclick="closeModal()">✕</button>
+          </div>
+          <form id="formEditarMascota">
+            <div class="field">
+              <label>Nombre</label>
+              <input id="editName" required maxlength="100">
+            </div>
+            <div class="field">
+              <label>Especie</label>
+              <select id="editSpecies" required>
+                <option value="Perro">Perro</option>
+                <option value="Gato">Gato</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Raza</label>
+              <input id="editBreed" maxlength="100">
+            </div>
+            <div class="field">
+              <label>Edad en años</label>
+              <input id="editAge" type="number" min="0" max="100">
+            </div>
+            <div class="field">
+              <label>Sexo</label>
+              <select id="editSex">
+                <option value="">No especificado</option>
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Descripción</label>
+              <textarea id="editDescription" rows="3"></textarea>
+            </div>
+            <div class="field">
+              <label>Ubicación</label>
+              <input id="editLocation" maxlength="150">
+            </div>
+            <button class="btn" type="submit"
+              style="width:100%">
+              Guardar cambios
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+    document.getElementById('editName').value = mascota.name || '';
+    document.getElementById('editSpecies').value =
+      ['Perro', 'Gato', 'Otro'].includes(mascota.species)
+        ? mascota.species : 'Otro';
+    document.getElementById('editBreed').value = mascota.breed || '';
+    document.getElementById('editAge').value = mascota.age ?? '';
+    document.getElementById('editSex').value = mascota.sex || '';
+    document.getElementById('editDescription').value =
+      mascota.description || '';
+    document.getElementById('editLocation').value =
+      mascota.location || '';
+    document.getElementById('formEditarMascota')
+      .addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const boton = e.submitter;
+        if (boton) boton.disabled = true;
+        try {
+          const edad = document.getElementById('editAge').value;
+          const cambios = {
+            name: document.getElementById('editName').value.trim(),
+            species: document.getElementById('editSpecies').value,
+            breed: document.getElementById('editBreed').value.trim() || null,
+            age: edad === '' ? null : Number(edad),
+            sex: document.getElementById('editSex').value || null,
+            description:
+              document.getElementById('editDescription').value.trim() || null,
+            location:
+              document.getElementById('editLocation').value.trim() || null
+          };
+          if (!cambios.name) {
+            throw new Error('Ingresa el nombre de la mascota.');
+          }
+          const { data: actualizada, error: updateError } =
+            await supabaseClient
+              .from('pets')
+              .update(cambios)
+              .eq('id', petId)
+              .eq('owner_id', authData.user.id)
+              .select('id')
+              .single();
+          if (updateError || !actualizada) {
+            throw updateError ||
+              new Error('No se pudo actualizar la mascota.');
+          }
+          await cargarMascotas();
+          closeModal();
+          renderPage();
+          toast('¡Mascota actualizada correctamente!');
+        } catch (error) {
+          alert('No se pudo actualizar: ' + error.message);
+        } finally {
+          if (boton) boton.disabled = false;
+        }
+      });
+  } catch (error) {
+    alert('Error al editar mascota: ' + error.message);
+  }
+}
 function filterProducts(){let q=(document.getElementById('productSearch')?.value||'').toLowerCase();let list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('productResults').innerHTML=list.length?list.map(productRow).join(''):'<div class="empty">No encontramos resultados.</div>'}
 function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
