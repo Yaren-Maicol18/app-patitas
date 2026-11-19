@@ -294,7 +294,7 @@ if (currentRole === 'owner') {
       <div class="pet-list">
         ${
 pets.filter(p => p.owner_id === usuarioId).length
-  ? pets.filter(p => p.owner_id === usuarioid).map(p => petTile(
+  ? pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
     p.emoji,
     p.name,
     p.kind,
