@@ -377,6 +377,21 @@ function openCreate() {
               <input id="newLocation" maxlength="150"
                 placeholder="Ej. Lima, Perú">
             </div>
+            <div class="field">
+  <label>Fotografías de la mascota (opcional)</label>
+  <input
+    id="newPetPhotos"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+  >
+  <small class="muted">
+    Puedes seleccionar varias fotografías.
+    Formatos: JPG, PNG o WEBP.
+    Máximo 5 MB por fotografía.
+  </small>
+</div>
+            
           ` : `
             <div class="field">
               <label>Categoría</label>
