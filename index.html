@@ -317,7 +317,14 @@ pets.filter(p => p.owner_id === usuarioId).length
 }else if(activePage.includes('mascota')||activePage==='adopciones'){
  let list = activePage === 'mis mascotas'
   ? pets.filter(p => p.owner_id === usuarioId)
-  : pets;html+=`<div class="toolbar"><input id="petSearch" placeholder="Buscar por nombre o ubicación..." oninput="filterPets()"><select id="petFilter" onchange="filterPets()"><option value="">Todas las mascotas</option><option>Perro</option><option>Gata</option></select></div><div class="pet-list" id="petResults">${list.map(p=>petTile(p.emoji,p.name,p.kind+' · '+p.place,p.status,true)).join('')}</div>`;
+  : pets;html+=`<div class="toolbar"><input id="petSearch" placeholder="Buscar por nombre o ubicación..." oninput="filterPets()"><select id="petFilter" onchange="filterPets()"><option value="">Todas las mascotas</option><option>Perro</option><option>Gata</option></select></div><div class="pet-list" id="petResults">${list.map(p=>petTile(
+  p.emoji,
+  p.name,
+  p.kind+' · '+p.place,
+  p.status,
+  true,
+  p.foto
+)).join('')}</div>`;
 }else if(activePage.includes('producto')||activePage.includes('servicio')||activePage.includes('promocion')){
  html+=`<div class="toolbar"><input id="productSearch" placeholder="Buscar productos o servicios..." oninput="filterProducts()"><select><option>Todas las categorías</option><option>Alimentos</option><option>Salud</option><option>Accesorios</option></select></div><div class="panel" id="productResults">${products.map(productRow).join('')}</div>`;
 }else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')){
