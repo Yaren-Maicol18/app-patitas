@@ -142,6 +142,11 @@ async function cargarMascotas() {
       (mascota.age !== null ? ' · ' + mascota.age + ' años' : ''),
     place: mascota.location || 'Ubicación no especificada',
     emoji: mascota.species.toLowerCase() === 'gato' ? '🐱' : '🐶',
+    foto: mascota.pet_photos?.length
+  ? supabaseClient.storage
+      .from('pet-photos')
+      .getPublicUrl(mascota.pet_photos[0].image_path).data.publicUrl
+  : null,
     status: mascota.status === 'disponible'
       ? 'Disponible'
       : mascota.status
