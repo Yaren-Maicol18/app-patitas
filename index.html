@@ -270,32 +270,73 @@ function petTile(emoji,name,detail,status,adopt=false){return `<article class="p
 function feed(emoji,title,desc){return `<div class="feed-item"><div class="emoji">${emoji}</div><div><strong>${title}</strong><p>${desc}</p></div></div>`}
 function productRow(p){return `<div class="product-row"><div class="product-left"><div class="product-emoji">${p.emoji}</div><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.category)}</small></div></div><span class="price">${p.price}</span></div>`}
 function openCreate() {
-  let isPet = currentRole !== 'business';
+  const isPet = currentRole !== 'business';
   document.getElementById('modalRoot').innerHTML = `
     <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
       <div class="modal">
         <div class="modal-head">
-          <h2>${isPet ? 'Publicar mascota' : 'Agregar producto o servicio'}</h2>
+          <h2>${isPet ? 'Agregar mascota' : 'Agregar producto o servicio'}</h2>
           <button class="close" onclick="closeModal()">✕</button>
         </div>
-        <form onsubmit="saveNew(event,${isPet})">
+
+        <form onsubmit="saveNew(event, ${isPet})">
           <div class="field">
             <label>${isPet ? 'Nombre de la mascota' : 'Nombre del producto o servicio'}</label>
-            <input id="newName" required
-              placeholder="${isPet ? 'Ej. Firulais' : 'Ej. Baño y grooming'}">
+            <input id="newName" required maxlength="100">
           </div>
-          <div class="field">
-            <label>${isPet ? 'Tipo y edad' : 'Categoría'}</label>
-            <input id="newDetail" required
-              placeholder="${isPet ? 'Perro · 2 años' : 'Cuidado'}">
-          </div>
-          ${isPet ? '' : `
+
+          ${isPet ? `
+            <div class="field">
+              <label>Especie</label>
+              <select id="newSpecies" required>
+                <option value="Perro">Perro</option>
+                <option value="Gato">Gato</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Raza (opcional)</label>
+              <input id="newBreed" maxlength="100">
+            </div>
+
+            <div class="field">
+              <label>Edad en años (opcional)</label>
+              <input id="newAge" type="number" min="0" max="100">
+            </div>
+
+            <div class="field">
+              <label>Sexo</label>
+              <select id="newSex">
+                <option value="">No especificado</option>
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Descripción (opcional)</label>
+              <textarea id="newDescription" rows="3"></textarea>
+            </div>
+
+            <div class="field">
+              <label>Ubicación (opcional)</label>
+              <input id="newLocation" maxlength="150"
+                placeholder="Ej. Lima, Perú">
+            </div>
+          ` : `
+            <div class="field">
+              <label>Categoría</label>
+              <input id="newDetail" required>
+            </div>
+
             <div class="field">
               <label>Precio</label>
               <input id="newPrice" required placeholder="S/ 50.00">
             </div>
           `}
-          <button class="btn" style="width:100%">
+
+          <button class="btn" type="submit" style="width:100%">
             Guardar publicación
           </button>
         </form>
@@ -303,7 +344,66 @@ function openCreate() {
     </div>
   `;
 }
-function saveNew(e,isPet){e.preventDefault();let name=document.getElementById('newName').value,detail=document.getElementById('newDetail').value;if(isPet){pets.unshift({name,kind:detail,place:'Por definir',emoji:detail.toLowerCase().includes('gat')?'🐱':'🐶',status:'En adopción'})}else{products.unshift({name,category:detail,price:document.getElementById('newPrice').value,emoji:'🛍️'})}closeModal();renderPage();toast('¡Publicación agregada correctamente!')}
+async function saveNew(e, isPet) {
+  e.preventDefault();
+  const boton = e.submitter;
+  if (boton) boton.disabled = true;
+  const name = document.getElementById('newName').value.trim();
+  try {
+    if (isPet) {
+      const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
+      if (authError || !authData.user) {
+        throw new Error('Debes iniciar sesión para registrar una mascota.');
+      }
+      const species = document.getElementById('newSpecies').value;
+      const breed = document.getElementById('newBreed').value.trim();
+      const ageValue = document.getElementById('newAge').value;
+      const sex = document.getElementById('newSex').value;
+      const description =
+        document.getElementById('newDescription').value.trim();
+      const location =
+        document.getElementById('newLocation').value.trim();
+      if (!name) {
+        throw new Error('Ingresa el nombre de la mascota.');
+      }
+      const nuevaMascota = {
+        owner_id: authData.user.id,
+        name: name,
+        species: species,
+        breed: breed || null,
+        age: ageValue === '' ? null : Number(ageValue),
+        sex: sex || null,
+        description: description || null,
+        location: location || null,
+        status: 'disponible'
+      };
+      const { error } = await supabaseClient
+        .from('pets')
+        .insert(nuevaMascota);
+      if (error) throw error;
+      toast('¡Mascota guardada en Supabase!');
+    } else {
+      const detail =
+        document.getElementById('newDetail').value.trim();
+      const price =
+        document.getElementById('newPrice').value.trim();
+      products.unshift({
+        name,
+        category: detail,
+        price,
+        emoji: '🛍️'
+      });
+      toast('¡Producto agregado temporalmente!');
+    }
+    closeModal();
+    renderPage();
+  } catch (error) {
+    alert('No se pudo guardar: ' + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
 function closeModal(){document.getElementById('modalRoot').innerHTML=''}
 function filterPets(){let q=(document.getElementById('petSearch')?.value||'').toLowerCase(),f=document.getElementById('petFilter')?.value||'';let list=pets.filter(p=>(p.name+' '+p.kind+' '+p.place).toLowerCase().includes(q)&&(!f||p.kind.includes(f)));document.getElementById('petResults').innerHTML=list.length?list.map(p=>petTile(p.emoji,p.name,p.kind+' · '+p.place,p.status,true)).join(''):'<div class="empty">No encontramos mascotas con esos filtros.</div>'}
 function filterProducts(){let q=(document.getElementById('productSearch')?.value||'').toLowerCase();let list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('productResults').innerHTML=list.length?list.map(productRow).join(''):'<div class="empty">No encontramos resultados.</div>'}
