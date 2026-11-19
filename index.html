@@ -544,7 +544,8 @@ function filterPets() {
           p.name,
           p.kind + ' · ' + p.place,
           p.status,
-          true
+          true,
+          p.foto
         )
       ).join('')
     : '<div class="empty">No encontramos mascotas con esos filtros.</div>';
