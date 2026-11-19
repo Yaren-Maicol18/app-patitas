@@ -123,12 +123,33 @@
 const roleNames={owner:'Dueño de mascota',shelter:'Albergue',business:'Negocio PET'};
 const roleIcons={owner:'🐕',shelter:'🏡',business:'🛍️'};
 let currentUser=null,currentRole='owner',activePage='inicio';
-let pets=[
- {name:'Max',kind:'Perro · 2 años',place:'Lima',emoji:'🐕',status:'En adopción'},
- {name:'Luna',kind:'Gata · 1 año',place:'Miraflores',emoji:'🐈',status:'En adopción'},
- {name:'Rocky',kind:'Perro · 3 años',place:'Surco',emoji:'🐶',status:'En adopción'},
- {name:'Misha',kind:'Gata · 8 meses',place:'San Borja',emoji:'🐱',status:'En adopción'}
-];
+let pets = [];
+let usuarioId = null;
+async function cargarMascotas() {
+  const { data, error } = await supabaseClient
+    .from('pets')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Error al cargar mascotas:', error.message);
+    return;
+  }
+  pets = (data || []).map(mascota => ({
+    id: mascota.id,
+    owner_id: mascota.owner_id,
+    name: mascota.name,
+    kind: mascota.species +
+      (mascota.age !== null ? ' · ' + mascota.age + ' años' : ''),
+    place: mascota.location || 'Ubicación no especificada',
+    emoji: mascota.species.toLowerCase() === 'gato' ? '🐱' : '🐶',
+    status: mascota.status === 'disponible'
+      ? 'Disponible'
+      : mascota.status
+  }));
+  if (currentUser) {
+    renderPage();
+  }
+}
 let products=[
  {name:'Alimento premium',category:'Alimentos',price:'S/ 85.00',emoji:'🥣'},
  {name:'Consulta veterinaria',category:'Salud',price:'S/ 50.00',emoji:'🩺'},
@@ -215,6 +236,7 @@ async function login(e) {
       negocio: 'business'
     };
     currentUser = perfil.full_name || correo;
+    usuarioId = data.user.id;
     currentRole = tipos[perfil.user_type] || 'owner';
     hideViews();
     document.getElementById('dashboardView').classList.remove('hidden');
@@ -227,6 +249,7 @@ async function login(e) {
     activePage = 'inicio';
     renderNav();
     renderPage();
+    await cargarMascotas();
   } catch (error) {
     alert('No se pudo iniciar sesión: ' + error.message);
   }
@@ -238,10 +261,10 @@ async function logout() {
     alert('No se pudo cerrar sesión: ' + error.message);
     return;
   }
-
-  currentUser = null;
-  currentRole = 'owner';
-
+currentUser = null;
+usuarioId = null;
+pets = [];
+currentRole = 'owner';
   showHome();
   toast('Sesión cerrada correctamente');
 }
@@ -250,12 +273,42 @@ function navigate(page){activePage=page.toLowerCase();renderNav();renderPage()}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
 let html=`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div><button class="btn" onclick="openCreate()">＋ ${currentRole==='owner'?'Agregar mascota':currentRole==='shelter'?'Publicar mascota':'Agregar producto'}</button></div>`;
 if(activePage==='inicio'){
- html+=`<div class="stats"><div class="stat"><span class="stat-icon">🐾</span><span>${currentRole==='owner'?'Mis mascotas':'Publicaciones'}</span><strong>${currentRole==='owner'?2: pets.length}</strong></div><div class="stat"><span class="stat-icon">❤️</span><span>${currentRole==='shelter'?'Solicitudes':'Interacciones'}</span><strong>${currentRole==='shelter'?requests.length:12}</strong></div><div class="stat"><span class="stat-icon">🤝</span><span>${currentRole==='business'?'Clientes':'Comunidad'}</span><strong>${currentRole==='business'?28:156}</strong></div></div>`;
- if(currentRole==='owner')html+=`<div class="content-grid"><div class="panel"><div class="panel-head"><h2>Mis mascotas</h2><button class="btn light small" onclick="navigate('Mis mascotas')">Ver todas</button></div><div class="pet-list">${petTile('🐕','Toby','Perro · 3 años','Activo')}${petTile('🐈','Mimi','Gata · 1 año','Activo')}</div></div><div class="panel"><h2>Actividad para ti</h2>${feed('🩺','Cuida su salud','Recuerda mantener al día sus controles veterinarios.')}${feed('❤️','Adopta una mascota','Hay nuevos amigos esperando un hogar.')}${feed('🛍️','Productos destacados','Descubre artículos para consentirlos.')}</div></div>`;
+ html+=`<div class="stats"><div class="stat"><span class="stat-icon">🐾</span><span>${currentRole==='owner'?'Mis mascotas':'Publicaciones'}</span><strong>${currentRole==='owner'
+  ? pets.filter(p => p.owner_id === usuarioId).length
+  : pets.length}</strong></div><div class="stat"><span class="stat-icon">❤️</span><span>${currentRole==='shelter'?'Solicitudes':'Interacciones'}</span><strong>${currentRole==='shelter'?requests.length:12}</strong></div><div class="stat"><span class="stat-icon">🤝</span><span>${currentRole==='business'?'Clientes':'Comunidad'}</span><strong>${currentRole==='business'?28:156}</strong></div></div>`;
+if (currentRole === 'owner') {
+  html += `<div class="content-grid">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Mis mascotas</h2>
+        <button class="btn light small"
+          onclick="navigate('Mis mascotas')">
+          Ver todas
+        </button>
+      </div>
+      <div class="pet-list">
+        ${
+pets.filter(p => p.owner_id === usuarioId).length
+  ? pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
+              p.emoji, p.name, p.kind, p.status
+            )).join('')
+          : '<div class="empty">Todavía no hay mascotas registradas.</div>'}
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Actividad para ti</h2>
+      ${feed('🩺','Cuida su salud','Recuerda mantener al día sus controles veterinarios.')}
+      ${feed('❤️','Adopta una mascota','Hay nuevos amigos esperando un hogar.')}
+      ${feed('🛍️','Productos destacados','Descubre artículos para consentirlos.')}
+    </div>
+  </div>`;
+}
  if(currentRole==='shelter')html+=`<div class="content-grid"><div class="panel"><div class="panel-head"><h2>Mascotas publicadas</h2><button class="btn light small" onclick="navigate('Mascotas')">Administrar</button></div><div class="pet-list">${pets.slice(0,4).map(p=>petTile(p.emoji,p.name,p.kind,p.status)).join('')}</div></div><div class="panel"><h2>Actividad reciente</h2>${requests.map(r=>feed('📩',r,'Revisa los detalles y responde a la comunidad.')).join('')}</div></div>`;
  if(currentRole==='business')html+=`<div class="content-grid"><div class="panel"><div class="panel-head"><h2>Tu catálogo</h2><button class="btn light small" onclick="navigate('Productos y servicios')">Ver catálogo</button></div>${products.slice(0,4).map(productRow).join('')}</div><div class="panel"><h2>Actividad reciente</h2>${requests.map(r=>feed('📩',r,'Hay una nueva interacción de un cliente.')).join('')}</div></div>`;
 }else if(activePage.includes('mascota')||activePage==='adopciones'){
- let list=currentRole==='owner'?pets:pets;html+=`<div class="toolbar"><input id="petSearch" placeholder="Buscar por nombre o ubicación..." oninput="filterPets()"><select id="petFilter" onchange="filterPets()"><option value="">Todas las mascotas</option><option>Perro</option><option>Gata</option></select></div><div class="pet-list" id="petResults">${list.map(p=>petTile(p.emoji,p.name,p.kind+' · '+p.place,p.status,true)).join('')}</div>`;
+ let list = activePage === 'mis mascotas'
+  ? pets.filter(p => p.owner_id === usuarioId)
+  : pets;html+=`<div class="toolbar"><input id="petSearch" placeholder="Buscar por nombre o ubicación..." oninput="filterPets()"><select id="petFilter" onchange="filterPets()"><option value="">Todas las mascotas</option><option>Perro</option><option>Gata</option></select></div><div class="pet-list" id="petResults">${list.map(p=>petTile(p.emoji,p.name,p.kind+' · '+p.place,p.status,true)).join('')}</div>`;
 }else if(activePage.includes('producto')||activePage.includes('servicio')||activePage.includes('promocion')){
  html+=`<div class="toolbar"><input id="productSearch" placeholder="Buscar productos o servicios..." oninput="filterProducts()"><select><option>Todas las categorías</option><option>Alimentos</option><option>Salud</option><option>Accesorios</option></select></div><div class="panel" id="productResults">${products.map(productRow).join('')}</div>`;
 }else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')){
@@ -383,6 +436,7 @@ async function saveNew(e, isPet) {
         .insert(nuevaMascota);
       if (error) throw error;
       toast('¡Mascota guardada en Supabase!');
+      await cargarMascotas();
     } else {
       const detail =
         document.getElementById('newDetail').value.trim();
@@ -405,7 +459,36 @@ async function saveNew(e, isPet) {
   }
 }
 function closeModal(){document.getElementById('modalRoot').innerHTML=''}
-function filterPets(){let q=(document.getElementById('petSearch')?.value||'').toLowerCase(),f=document.getElementById('petFilter')?.value||'';let list=pets.filter(p=>(p.name+' '+p.kind+' '+p.place).toLowerCase().includes(q)&&(!f||p.kind.includes(f)));document.getElementById('petResults').innerHTML=list.length?list.map(p=>petTile(p.emoji,p.name,p.kind+' · '+p.place,p.status,true)).join(''):'<div class="empty">No encontramos mascotas con esos filtros.</div>'}
+
+function filterPets() {
+  const q = (document.getElementById('petSearch')?.value || '')
+    .toLowerCase();
+
+  const f = document.getElementById('petFilter')?.value || '';
+
+  let list = activePage === 'mis mascotas'
+    ? pets.filter(p => p.owner_id === usuarioId)
+    : pets;
+
+  list = list.filter(p =>
+    (p.name + ' ' + p.kind + ' ' + p.place)
+      .toLowerCase()
+      .includes(q) &&
+    (!f || p.kind.includes(f))
+  );
+
+  document.getElementById('petResults').innerHTML = list.length
+    ? list.map(p =>
+        petTile(
+          p.emoji,
+          p.name,
+          p.kind + ' · ' + p.place,
+          p.status,
+          true
+        )
+      ).join('')
+    : '<div class="empty">No encontramos mascotas con esos filtros.</div>';
+}
 function filterProducts(){let q=(document.getElementById('productSearch')?.value||'').toLowerCase();let list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('productResults').innerHTML=list.length?list.map(productRow).join(''):'<div class="empty">No encontramos resultados.</div>'}
 function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
