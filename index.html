@@ -324,7 +324,31 @@ pets.filter(p => p.owner_id === usuarioId).length
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
 root.innerHTML=html}
-function petTile(emoji,name,detail,status,adopt=false){return `<article class="pet-card"><div class="pet-photo">${emoji}</div><div class="pet-info"><h3>${escapeHtml(name)}</h3><p>${escapeHtml(detail)}</p><span class="tag">${status}</span>${adopt?`<button class="btn small" style="width:100%;margin-top:11px" onclick="toast('¡Interés registrado! El albergue podrá contactarte.')">${currentRole==='owner'?'Me interesa':'Ver publicación'}</button>`:''}</div></article>`}
+function petTile(emoji, name, detail, status, adopt = false, foto = null) {
+  const imagen = foto
+    ? `<img src="${escapeAttr(foto)}"
+         alt="Foto de ${escapeAttr(name)}"
+         style="width:100%;height:100%;object-fit:cover;"
+         onerror="this.style.display='none';this.parentElement.textContent='${emoji}'">`
+    : emoji;
+  return `
+    <article class="pet-card">
+      <div class="pet-photo">${imagen}</div>
+      <div class="pet-info">
+        <h3>${escapeHtml(name)}</h3>
+        <p>${escapeHtml(detail)}</p>
+        <span class="tag">${escapeHtml(status)}</span>
+        ${adopt ? `
+          <button class="btn small"
+            style="width:100%;margin-top:11px"
+            onclick="toast('¡Interés registrado! El albergue podrá contactarte.')">
+            ${currentRole === 'owner' ? 'Me interesa' : 'Ver publicación'}
+          </button>
+        ` : ''}
+      </div>
+    </article>
+  `;
+}
 function feed(emoji,title,desc){return `<div class="feed-item"><div class="emoji">${emoji}</div><div><strong>${title}</strong><p>${desc}</p></div></div>`}
 function productRow(p){return `<div class="product-row"><div class="product-left"><div class="product-emoji">${p.emoji}</div><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.category)}</small></div></div><span class="price">${p.price}</span></div>`}
 function openCreate() {
@@ -336,13 +360,11 @@ function openCreate() {
           <h2>${isPet ? 'Agregar mascota' : 'Agregar producto o servicio'}</h2>
           <button class="close" onclick="closeModal()">✕</button>
         </div>
-
         <form onsubmit="saveNew(event, ${isPet})">
           <div class="field">
             <label>${isPet ? 'Nombre de la mascota' : 'Nombre del producto o servicio'}</label>
             <input id="newName" required maxlength="100">
           </div>
-
           ${isPet ? `
             <div class="field">
               <label>Especie</label>
@@ -352,17 +374,14 @@ function openCreate() {
                 <option value="Otro">Otro</option>
               </select>
             </div>
-
             <div class="field">
               <label>Raza (opcional)</label>
               <input id="newBreed" maxlength="100">
             </div>
-
             <div class="field">
               <label>Edad en años (opcional)</label>
               <input id="newAge" type="number" min="0" max="100">
             </div>
-
             <div class="field">
               <label>Sexo</label>
               <select id="newSex">
@@ -371,12 +390,10 @@ function openCreate() {
                 <option value="Hembra">Hembra</option>
               </select>
             </div>
-
             <div class="field">
               <label>Descripción (opcional)</label>
               <textarea id="newDescription" rows="3"></textarea>
             </div>
-
             <div class="field">
               <label>Ubicación (opcional)</label>
               <input id="newLocation" maxlength="150"
@@ -396,19 +413,16 @@ function openCreate() {
     Máximo 5 MB por fotografía.
   </small>
 </div>
-            
           ` : `
             <div class="field">
               <label>Categoría</label>
               <input id="newDetail" required>
             </div>
-
             <div class="field">
               <label>Precio</label>
               <input id="newPrice" required placeholder="S/ 50.00">
             </div>
           `}
-
           <button class="btn" type="submit" style="width:100%">
             Guardar publicación
           </button>
