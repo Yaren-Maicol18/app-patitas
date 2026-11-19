@@ -128,7 +128,7 @@ let usuarioId = null;
 async function cargarMascotas() {
   const { data, error } = await supabaseClient
     .from('pets')
-    .select('*')
+    .select("*, pet_photos(image_path)")    
     .order('created_at', { ascending: false });
   if (error) {
     console.error('Error al cargar mascotas:', error.message);
