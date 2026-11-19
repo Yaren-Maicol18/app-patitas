@@ -294,9 +294,14 @@ if (currentRole === 'owner') {
       <div class="pet-list">
         ${
 pets.filter(p => p.owner_id === usuarioId).length
-  ? pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
-              p.emoji, p.name, p.kind, p.status
-            )).join('')
+  ? pets.filter(p => p.owner_id === usuarioid).map(p => petTile(
+    p.emoji,
+    p.name,
+    p.kind,
+    p.status,
+    false,
+    p.foto
+)).join('')
           : '<div class="empty">Todavía no hay mascotas registradas.</div>'}
       </div>
     </div>
