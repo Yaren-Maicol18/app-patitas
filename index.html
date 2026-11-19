@@ -446,10 +446,36 @@ async function saveNew(e, isPet) {
         location: location || null,
         status: 'disponible'
       };
-      const { error } = await supabaseClient
-        .from('pets')
-        .insert(nuevaMascota);
-      if (error) throw error;
+      const { data: mascotaGuardada, error } = await supabaseClient
+  .from('pets')
+  .insert(nuevaMascota)
+  .select('id')
+  .single();
+if (error) throw error;
+      const archivos = document.getElementById('newPetPhotos')?.files;
+if (archivos && archivos.length > 0) {
+  const formatos = ['image/jpeg', 'image/png', 'image/webp'];
+  for (const archivo of archivos) {
+    if (!formatos.includes(archivo.type) || archivo.size > 5 * 1024 * 1024) {
+      throw new Error('Las fotos deben ser JPG, PNG o WEBP y pesar máximo 5 MB.');
+    }
+    const extension = archivo.type === 'image/jpeg'
+      ? 'jpg'
+      : archivo.type === 'image/png' ? 'png' : 'webp';
+    const ruta = `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
+    const { error: errorSubida } = await supabaseClient.storage
+      .from('pet-photos')
+      .upload(ruta, archivo, { contentType: archivo.type });
+    if (errorSubida) throw errorSubida;
+    const { error: errorFoto } = await supabaseClient
+      .from('pet_photos')
+      .insert({
+        pet_id: mascotaGuardada.id,
+        image_path: ruta
+      });
+    if (errorFoto) throw errorFoto;
+  }
+}
       toast('¡Mascota guardada en Supabase!');
       await cargarMascotas();
     } else {
