@@ -136,7 +136,7 @@ let usuarioId = null;
 async function cargarMascotas() {
   const { data, error } = await supabaseClient
     .from('pets')
-    .select("*, pet_photos(image_path)")    
+    .select("*, pet_photos(image_path, created_at)")  
     .order('created_at', { ascending: false });
   if (error) {
     console.error('Error al cargar mascotas:', error.message);
@@ -151,9 +151,13 @@ async function cargarMascotas() {
     place: mascota.location || 'Ubicación no especificada',
     emoji: mascota.species.toLowerCase() === 'gato' ? '🐱' : '🐶',
     foto: mascota.pet_photos?.length
-  ? supabaseClient.storage
-      .from('pet-photos')
-      .getPublicUrl(mascota.pet_photos[0].image_path).data.publicUrl
+  ? supabaseClient.storage.from('pet-photos')
+      .getPublicUrl(
+        [...mascota.pet_photos]
+          .sort((a, b) =>
+            new Date(b.created_at) - new Date(a.created_at)
+          )[0].image_path
+      ).data.publicUrl
   : null,
     status: mascota.status === 'disponible'
       ? 'Disponible'
