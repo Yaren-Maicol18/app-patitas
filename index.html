@@ -368,6 +368,7 @@ pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
 root.innerHTML=html}
+
 async function eliminarMascota(petId) {
   const confirmar = confirm(
     '¿Estás seguro de eliminar esta mascota? Esta acción no se puede deshacer.'
@@ -379,20 +380,63 @@ async function eliminarMascota(petId) {
     if (authError || !authData.user) {
       throw new Error('Debes iniciar sesión.');
     }
+    const userId = authData.user.id;
+    // 1. Verificar que la mascota pertenece al usuario.
+    const { data: mascota, error: mascotaError } =
+      await supabaseClient
+        .from('pets')
+        .select('id')
+        .eq('id', petId)
+        .eq('owner_id', userId)
+        .single();
+    if (mascotaError || !mascota) {
+      throw new Error('No se encontró la mascota o no tienes permiso.');
+    }
+    // 2. Obtener las rutas de sus fotografías.
+    const { data: fotos, error: fotosError } =
+      await supabaseClient
+        .from('pet_photos')
+        .select('image_path')
+        .eq('pet_id', petId);
+    if (fotosError) throw fotosError;
+    // 3. Eliminar los archivos de Supabase Storage.
+    const rutas = (fotos || [])
+      .map(foto => foto.image_path)
+      .filter(ruta =>
+        typeof ruta === 'string' &&
+        ruta.startsWith(userId + '/')
+      );
+    if (rutas.length !== (fotos || []).length) {
+      throw new Error(
+        'Algunas fotografías tienen rutas inesperadas. No se eliminó la mascota.'
+      );
+    }
+    if (rutas.length > 0) {
+      const { error: storageError } =
+        await supabaseClient.storage
+          .from('pet-photos')
+          .remove(rutas);
+      if (storageError) throw storageError;
+    }
+    // 4. Eliminar la mascota de la base de datos.
     const { data, error } = await supabaseClient
       .from('pets')
       .delete()
       .eq('id', petId)
-      .eq('owner_id', authData.user.id)
+      .eq('owner_id', userId)
       .select('id');
     if (error) throw error;
     if (!data || data.length === 0) {
-      throw new Error('No se pudo eliminar la mascota o no tienes permiso.');
+      throw new Error(
+        'No se pudo eliminar el registro de la mascota.'
+      );
     }
+    // 5. Actualizar la pantalla.
     await cargarMascotas();
     renderPage();
-    toast('¡Mascota eliminada correctamente!');
+    toast('¡Mascota y fotografías eliminadas correctamente!');
   } catch (error) {
+    console.error('Error al eliminar mascota:', error);
     alert('Error al eliminar mascota: ' + error.message);
   }
 }
