@@ -448,7 +448,7 @@ function petTile(emoji, name, detail, status, adopt = false, foto = null, petId 
   const imagen = foto
     ? `<img src="${escapeAttr(foto)}"
          alt="Foto de ${escapeAttr(name)}"
-         style="width:100%;height:100%;object-fit:cover;"
+         style="width:100%;height:100%;object-fit:contain;"
          onerror="this.remove();">`
     : '';
 const esMiMascota = petId &&
