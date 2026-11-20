@@ -867,42 +867,77 @@ async function editarMascota(petId) {
           if (updateError || !actualizada) {
             throw updateError || new Error('No se pudo actualizar la mascota.');
           }
+                    let fotoAnteriorPendiente = false;
           if (archivo) {
-  const extension = archivo.type === 'image/jpeg'
-    ? 'jpg'
-    : archivo.type === 'image/png' ? 'png' : 'webp';
-  const ruta =
-    `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
-  const { error: errorSubida } = await supabaseClient.storage
-    .from('pet-photos')
-    .upload(ruta, archivo, {
-      contentType: archivo.type
-    });
-  if (errorSubida) throw errorSubida;
-  const { error: errorFoto } = await supabaseClient
-    .from('pet_photos')
-    .insert({
-      pet_id: petId,
-      image_path: ruta
-    });
-  if (errorFoto) {
-    // Evitar dejar una imagen sin referencia.
-    const { error: limpiezaError } = await supabaseClient.storage
-      .from('pet-photos')
-      .remove([ruta]);
-    if (limpiezaError) {
-      console.error(
-        'No se pudo limpiar la imagen subida:',
-        limpiezaError
-      );
-    }
-    throw errorFoto;
-  }
-}
-await cargarMascotas();
-closeModal();
-renderPage();
-toast('¡Mascota actualizada correctamente!');
+            try {
+              const { data: fotos, error: errorConsulta } = await supabaseClient
+                .from('pet_photos')
+                .select('id, image_path')
+                .eq('pet_id', petId)
+                .order('created_at', { ascending: false, nullsFirst: false })
+                .limit(1);
+              if (errorConsulta) throw errorConsulta;
+              const principal = fotos[0];
+              const extension = archivo.type === 'image/jpeg'
+                ? 'jpg'
+                : archivo.type === 'image/png' ? 'png' : 'webp';
+              const carpeta = authData.user.id + '/';
+              const ruta = carpeta + crypto.randomUUID() + '.' + extension;
+              const bucket = supabaseClient.storage.from('pet-photos');
+              const { error: errorSubida } = await bucket.upload(ruta, archivo, {
+                contentType: archivo.type
+              });
+              if (errorSubida) throw errorSubida;
+              if (principal) {
+                const { data: reemplazada, error: errorFoto } = await supabaseClient
+                  .from('pet_photos')
+                  .update({ image_path: ruta })
+                  .eq('id', principal.id)
+                  .eq('pet_id', petId)
+                  .eq('image_path', principal.image_path)
+                  .select('id');
+                if (errorFoto) throw errorFoto;
+                if (!reemplazada?.length) {
+                  await bucket.remove([ruta]);
+                  throw new Error('La foto principal cambió. Abre la ficha y vuelve a intentar.');
+                }
+                try {
+                  const rutaAnterior = principal.image_path;
+                  if (rutaAnterior.startsWith(carpeta)) {
+                    const { data: referencias, error: errorReferencias } =
+                      await supabaseClient.from('pet_photos').select('id')
+                        .eq('image_path', rutaAnterior).limit(1);
+                    if (errorReferencias) throw errorReferencias;
+                    if (referencias.length === 0) {
+                      const { data: borradas, error: errorBorrado } =
+                        await bucket.remove([rutaAnterior]);
+                      if (errorBorrado) throw errorBorrado;
+                      fotoAnteriorPendiente = borradas?.length !== 1;
+                    }
+                  }
+                } catch (errorLimpieza) {
+                  console.error('Error al retirar la foto anterior:', errorLimpieza);
+                  fotoAnteriorPendiente = true;
+                }
+              } else {
+                const { error: errorFoto } = await supabaseClient
+                  .from('pet_photos')
+                  .insert({ pet_id: petId, image_path: ruta });
+                if (errorFoto) throw errorFoto;
+              }
+            } catch (errorFoto) {
+              console.error('Error al guardar la foto:', errorFoto);
+              alert('Los datos de la mascota se guardaron, pero no se pudo confirmar la foto nueva. ' + errorFoto.message);
+              await cargarMascotas();
+              return;
+            }
+          }
+          await cargarMascotas();
+          closeModal();
+          renderPage();
+          toast(fotoAnteriorPendiente
+            ? 'Foto actualizada. Queda revisar la foto anterior en Storage.'
+            : '¡Mascota actualizada correctamente!');
         } catch (error) {
           alert('No se pudo actualizar: ' + error.message);
         } finally {
