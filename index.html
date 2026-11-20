@@ -610,7 +610,6 @@ async function saveNew(e, isPet) {
   document.getElementById('newPetPhotos')?.files || []
 );
 const formatos = ['image/jpeg', 'image/png', 'image/webp'];
-
 for (const archivo of archivos) {
   if (!formatos.includes(archivo.type) || archivo.size > 5 * 1024 * 1024) {
     throw new Error('Las fotos deben ser JPG, PNG o WEBP y pesar máximo 5 MB.');
@@ -633,33 +632,46 @@ for (const archivo of archivos) {
   .select('id')
   .single();
 if (error) throw error;
-      if (archivos.length > 0) {
-  for (const archivo of archivos) {
-    const extension = archivo.type === 'image/jpeg'
-      ? 'jpg'
-      : archivo.type === 'image/png' ? 'png' : 'webp';
-    const ruta = `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
-    const { error: errorSubida } = await supabaseClient.storage
-      .from('pet-photos')
-      .upload(ruta, archivo, { contentType: archivo.type });
-    if (errorSubida) throw errorSubida;
-    const { error: errorFoto } = await supabaseClient
-      .from('pet_photos')
-      .insert({
-        pet_id: mascotaGuardada.id,
-        image_path: ruta
-      });
-    if (errorFoto) throw errorFoto;
-  }
-}
-      toast('¡Mascota guardada en Supabase!');
-      await cargarMascotas();
-    } else {
+            let fotosGuardadas = 0;
+      let falloFoto = false;
+      for (const archivo of archivos) {
+        try {
+          const extension = archivo.type === 'image/jpeg'
+            ? 'jpg'
+            : archivo.type === 'image/png' ? 'png' : 'webp';
+          const ruta = `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
+          const { error: errorSubida } = await supabaseClient.storage
+            .from('pet-photos')
+            .upload(ruta, archivo, { contentType: archivo.type });
+          if (errorSubida) throw errorSubida;
+          const { error: errorFoto } = await supabaseClient
+            .from('pet_photos')
+            .insert({
+              pet_id: mascotaGuardada.id,
+              image_path: ruta
+            });
+          if (errorFoto) throw errorFoto;
+          fotosGuardadas++;
+        } catch (errorFoto) {
+          console.error('Error al guardar una foto:', errorFoto);
+          falloFoto = true;
+        }
+      }
+      closeModal();
+      if (falloFoto) {
+        alert(
+          `La mascota se guardó con ${fotosGuardadas} de ${archivos.length} fotos. ` +
+          'Ve a Mis mascotas y abre Editar mascota para agregar las que faltan.'
+        );
+      } else {
+        toast('¡Mascota guardada en Supabase!');
+      }
+      await cargarMascotas();    } else {
       const detail =
         document.getElementById('newDetail').value.trim();
       const price =
         document.getElementById('newPrice').value.trim();
-      products.unshift({
+        products.unshift({
         name,
         category: detail,
         price,
