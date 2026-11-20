@@ -368,7 +368,34 @@ pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
 root.innerHTML=html}
-
+async function eliminarMascota(petId) {
+  const confirmar = confirm(
+    '¿Estás seguro de eliminar esta mascota? Esta acción no se puede deshacer.'
+  );
+  if (!confirmar) return;
+  try {
+    const { data: authData, error: authError } =
+      await supabaseClient.auth.getUser();
+    if (authError || !authData.user) {
+      throw new Error('Debes iniciar sesión.');
+    }
+    const { data, error } = await supabaseClient
+      .from('pets')
+      .delete()
+      .eq('id', petId)
+      .eq('owner_id', authData.user.id)
+      .select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('No se pudo eliminar la mascota o no tienes permiso.');
+    }
+    await cargarMascotas();
+    renderPage();
+    toast('¡Mascota eliminada correctamente!');
+  } catch (error) {
+    alert('Error al eliminar mascota: ' + error.message);
+  }
+}
 function petTile(emoji, name, detail, status, adopt = false, foto = null, petId = null, ownerId = null) {
   const imagen = foto
     ? `<img src="${escapeAttr(foto)}"
@@ -395,6 +422,11 @@ const esMiMascota = petId &&
             onclick="editarMascota('${escapeAttr(petId)}')">
             ✏️ Editar mascota
           </button>
+          <button class="btn small"
+            style="width:100%;margin-top:8px;background:#dc3545;color:white;"
+            onclick="eliminarMascota('${escapeAttr(petId)}')">
+            🗑️ Eliminar mascota
+        </button> 
         ` : ''}
         ${adopt && !esMiMascota ? `
           <button class="btn small"
