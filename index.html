@@ -440,30 +440,36 @@ async function eliminarMascota(petId) {
         'Algunas fotografías tienen rutas inesperadas. No se eliminó la mascota.'
       );
     }
-    if (rutas.length > 0) {
-      const { error: storageError } =
-        await supabaseClient.storage
-          .from('pet-photos')
-          .remove(rutas);
-      if (storageError) throw storageError;
-    }
-    // 4. Eliminar la mascota de la base de datos.
-    const { data, error } = await supabaseClient
+        const { data, error } = await supabaseClient
       .from('pets')
       .delete()
       .eq('id', petId)
       .eq('owner_id', userId)
       .select('id');
     if (error) throw error;
-    if (!data || data.length === 0) {
-      throw new Error(
-        'No se pudo eliminar el registro de la mascota.'
-      );
+    if (!data?.length) {
+      throw new Error('No se pudo eliminar el registro de la mascota.');
     }
-    // 5. Actualizar la pantalla.
+    let limpiezaPendiente = false;
+    const rutasUnicas = [...new Set(rutas)];
+    if (rutasUnicas.length > 0) {
+      try {
+        const { data: borradas, error: storageError } =
+          await supabaseClient.storage.from('pet-photos').remove(rutasUnicas);
+        if (storageError) throw storageError;
+        limpiezaPendiente = borradas?.length !== rutasUnicas.length;
+      } catch (storageError) {
+        console.error('Error al eliminar las fotos de Storage:', storageError);
+        limpiezaPendiente = true;
+      }
+    }
     await cargarMascotas();
     renderPage();
-    toast('¡Mascota y fotografías eliminadas correctamente!');
+    if (limpiezaPendiente) {
+      alert('La ficha se eliminó, pero no se pudo confirmar el borrado de todas sus fotos.');
+    } else {
+      toast('¡Mascota eliminada correctamente!');
+    }
   } catch (error) {
     console.error('Error al eliminar mascota:', error);
     alert('Error al eliminar mascota: ' + error.message);
