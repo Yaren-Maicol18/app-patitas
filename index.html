@@ -739,14 +739,27 @@ async function editarMascota(petId) {
               <label>Descripción</label>
               <textarea id="editDescription" rows="3"></textarea>
             </div>
-            <div class="field">
-              <label>Ubicación</label>
-              <input id="editLocation" maxlength="150">
-            </div>
-            <button class="btn" type="submit"
-              style="width:100%">
-              Guardar cambios
-            </button>
+<div class="field">
+  <label>Ubicación</label>
+  <input id="editLocation" maxlength="150">
+</div>
+<div class="field">
+  <label>📷 Cambiar fotografía</label>
+  <input
+    id="editPhoto"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+  >
+  <small style="color:#64748b">
+    Selecciona una nueva imagen JPG, PNG o WEBP
+    (máximo 5 MB). Si no seleccionas ninguna,
+    se conservará la fotografía actual.
+  </small>
+</div>
+<button class="btn" type="submit"
+  style="width:100%">
+  Guardar cambios
+</button>
           </form>
         </div>
       </div>
@@ -794,11 +807,51 @@ async function editarMascota(petId) {
           if (updateError || !actualizada) {
             throw updateError ||
               new Error('No se pudo actualizar la mascota.');
-          }
-          await cargarMascotas();
-          closeModal();
-          renderPage();
-          toast('¡Mascota actualizada correctamente!');
+          }       
+const archivo = document.getElementById('editPhoto')?.files[0];
+if (archivo) {
+  const formatos = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!formatos.includes(archivo.type)) {
+    throw new Error('La fotografía debe ser JPG, PNG o WEBP.');
+  }
+  if (archivo.size > 5 * 1024 * 1024) {
+    throw new Error('La fotografía no debe superar los 5 MB.');
+  }
+  const extension = archivo.type === 'image/jpeg'
+    ? 'jpg'
+    : archivo.type === 'image/png' ? 'png' : 'webp';
+  const ruta =
+    `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
+  const { error: errorSubida } = await supabaseClient.storage
+    .from('pet-photos')
+    .upload(ruta, archivo, {
+      contentType: archivo.type
+    });
+  if (errorSubida) throw errorSubida;
+  const { error: errorFoto } = await supabaseClient
+    .from('pet_photos')
+    .insert({
+      pet_id: petId,
+      image_path: ruta
+    });
+  if (errorFoto) {
+    // Evitar dejar una imagen sin referencia.
+    const { error: limpiezaError } = await supabaseClient.storage
+      .from('pet-photos')
+      .remove([ruta]);
+    if (limpiezaError) {
+      console.error(
+        'No se pudo limpiar la imagen subida:',
+        limpiezaError
+      );
+    }
+    throw errorFoto;
+  }
+}
+await cargarMascotas();
+closeModal();
+renderPage();
+toast('¡Mascota actualizada correctamente!');
         } catch (error) {
           alert('No se pudo actualizar: ' + error.message);
         } finally {
