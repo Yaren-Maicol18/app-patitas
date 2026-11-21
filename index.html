@@ -1050,10 +1050,10 @@ function vistaAvisos() {
   <div class="lost-toolbar">
     <input id="buscarAvisos" placeholder="Buscar por nombre, distrito o descripción" oninput="mostrarAvisos()">
     <select id="filtroAvisos" onchange="mostrarAvisos()">
-      <option value="activo">Avisos activos</option><option value="resuelto">Encontradas (avisos cerrados)</option><option value="todos">Todos</option>
+      <option value="todos">Todos los estados</option><option value="activo">Activos</option><option value="resuelto">Resueltos</option>
     </select>
     <select id="tipoAvisos" onchange="mostrarAvisos()">
-      <option value="todos">Perdidas y encontradas</option><option value="perdida">Perdidas</option><option value="encontrada">Encontradas</option>
+      <option value="todos">Todos los avisos</option><option value="perdida">Mascotas perdidas</option><option value="encontrada">Mascotas encontradas</option>
     </select>
   </div>
   <div id="resultadoAvisos"><p class="muted">Cargando avisos...</p></div>`;
@@ -1073,7 +1073,7 @@ function mostrarAvisos() {
   if(!destino) return;
   if(errorAvisos){destino.innerHTML=`<div class="panel">No se pudieron cargar los avisos: ${escapeHtml(errorAvisos)}</div>`;return;}
   const q = (document.getElementById('buscarAvisos')?.value || '').trim().toLowerCase();
-  const estado = document.getElementById('filtroAvisos')?.value || 'activo';
+  const estado = document.getElementById('filtroAvisos')?.value || 'todos';
   const tipo = document.getElementById('tipoAvisos')?.value || 'todos';
   const lista = avisosPerdidas.filter(a =>
     (estado==='todos' || a.status===estado) &&
