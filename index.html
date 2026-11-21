@@ -1100,6 +1100,7 @@ function avisoTarjeta(a) {
       ${a.description?`<p>${escapeHtml(a.description)}</p>`:''}
       ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como encontrada</button>
         <button class="btn small light" onclick="adjuntarFotoAviso('${escapeAttr(a.id)}')">📷 Adjuntar foto</button>`:''}
+      ${propia?`<button type="button" class="btn small" style="background:#dc3545;color:#fff;margin-top:9px" onclick="eliminarAviso('${escapeAttr(a.id)}')">🗑️ Eliminar aviso</button>`:''}
     </div>
   </article>`;
 }
@@ -1195,6 +1196,59 @@ async function resolverAviso(avisoId) {
     if(!data?.length)throw new Error('No se pudo actualizar el aviso.');
     await cargarAvisos();toast('¡Mascota marcada como encontrada!');
   }catch(err){alert('No se pudo cambiar el estado: '+err.message);}
+}
+
+// Elimina únicamente un aviso propio. Primero se borra la fila del aviso;
+// la clave foránea elimina automáticamente sus registros en lost_pet_photos.
+// Después se limpian los archivos físicos de Storage, sin afectar otros avisos.
+async function eliminarAviso(avisoId) {
+  if (!confirm('¿Eliminar este aviso y sus fotografías definitivamente? Esta acción no se puede deshacer.')) return;
+  try {
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    const user = authData?.user;
+    if (authError || !user) throw new Error('Debes iniciar sesión.');
+
+    const { data: aviso, error: avisoError } = await supabaseClient
+      .from('lost_pets').select('id').eq('id', avisoId).eq('user_id', user.id).single();
+    if (avisoError || !aviso) throw new Error('No se encontró el aviso o no tienes permiso.');
+
+    const { data: fotos, error: fotosError } = await supabaseClient
+      .from('lost_pet_photos').select('image_path').eq('lost_pet_id', avisoId);
+    if (fotosError) throw fotosError;
+    const carpeta = user.id + '/avisos/';
+    const rutas = (fotos || []).map(f => f.image_path);
+    if (!rutas.every(r => typeof r === 'string' && r.startsWith(carpeta))) {
+      throw new Error('Se detectaron rutas de fotografías inesperadas. El aviso no fue eliminado.');
+    }
+
+    const { data: eliminados, error: deleteError } = await supabaseClient
+      .from('lost_pets').delete().eq('id', avisoId).eq('user_id', user.id).select('id');
+    if (deleteError) throw deleteError;
+    if (!eliminados?.length) throw new Error('El aviso no pudo eliminarse.');
+
+    let limpiezaPendiente = false;
+    const rutasUnicas = [...new Set(rutas)];
+    if (rutasUnicas.length) {
+      try {
+        const { data: borradas, error: storageError } = await supabaseClient.storage
+          .from('pet-photos').remove(rutasUnicas);
+        if (storageError) throw storageError;
+        limpiezaPendiente = borradas?.length !== rutasUnicas.length;
+      } catch (storageError) {
+        console.error('No se pudieron retirar todas las fotografías del aviso:', storageError);
+        limpiezaPendiente = true;
+      }
+    }
+    await cargarAvisos();
+    if (limpiezaPendiente) {
+      alert('El aviso fue eliminado de Supabase, pero quedaron fotografías por revisar en Storage.');
+    } else {
+      toast('¡Aviso eliminado correctamente!');
+    }
+  } catch (error) {
+    console.error('Error al eliminar el aviso:', error);
+    alert('No se pudo eliminar el aviso: ' + error.message);
+  }
 }
 
 function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
