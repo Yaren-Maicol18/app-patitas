@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#f58220">
+<meta name="theme-color" content="#fffaf0">
 <title>Patitas | Comunidad Petlover</title>  
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -44,13 +44,62 @@
   height: 100% !important;
   object-fit: contain;
 }
+
+/* Avisos de mascotas perdidas y encontradas */
+.lost-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 20px}
+.lost-toolbar input,.lost-toolbar select{padding:12px;border:1px solid var(--line);border-radius:11px;background:white;min-width:0}
+.lost-toolbar input{flex:1 1 190px}
+.lost-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.lost-card{border:1px solid var(--line);background:white;border-radius:16px;overflow:hidden}
+.lost-photo{height:175px;background:#fff1e3;display:flex;justify-content:center;align-items:center;font-size:65px}
+.lost-photo img{width:100%;height:100%;object-fit:contain}
+.lost-body{padding:16px}
+.lost-body h3{margin:8px 0}
+.lost-body p{margin:8px 0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.lost-tag{display:inline-block;background:#fff1e3;color:#9f5014;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.lost-tag.found{background:#e9f8f0;color:#218357}
+@media(max-width:540px){.lost-grid{grid-template-columns:1fr}.lost-photo{height:210px}}
+
+/* === PATITAS · UI móvil basada en la presentación del proyecto === */
+:root{--orange:#f97811;--orange2:#ffad39;--ink:#142c41;--muted:#74808b;--cream:#fffaf0;--line:#f2e5d3;--shadow:0 12px 26px rgba(132,73,18,.08)}
+body{background:#fffbf3;color:var(--ink)}
+.topbar{background:rgba(255,253,246,.97);border-bottom:1px solid #f2e4cd;box-shadow:0 2px 13px #c98b2410}
+.brand{font-size:27px;letter-spacing:-1.3px}.paw{background:transparent;color:var(--orange);font-size:29px;width:40px;height:40px}
+.btn{border-radius:14px;box-shadow:0 5px 14px #f5822020}.btn.light{background:#fff2e2}
+.header-more{display:none;background:white;border:1px solid #f0dec5;color:var(--ink);width:40px;height:40px;border-radius:14px;font-size:22px}
+.dashboard{background:#fffbf3}.sidebar{background:#fffefa;border-color:#f4e9da}
+.nav button{display:flex;align-items:center;gap:10px;font-size:14px}.nav-icon{display:inline-grid;place-items:center;min-width:25px;font-size:22px;line-height:1.1}.nav-label{min-width:0}
+.nav button.active{color:#f16b05;background:#fff0de}
+.dash-main{max-width:1120px;padding:26px 34px 48px}
+.screen-intro{padding:16px 2px 20px}.screen-intro h2{font-size:clamp(25px,3.8vw,36px);margin:8px 0;color:#172c3e;line-height:1.14}.screen-intro p{margin:0;color:#77838b;font-size:14px}.tiny-kicker{font-weight:900;letter-spacing:1.5px;font-size:11px;color:#eb790d}.hello-paw{font-size:.7em}
+.feature-stack{display:grid;grid-template-columns:1fr;gap:15px;margin-bottom:23px}.feature-banner{position:relative;display:flex;align-items:center;justify-content:space-between;isolation:isolate;overflow:hidden;min-height:190px;border-radius:21px;padding:21px 26px;border:1px solid #f5debd}
+.feature-banner:before{content:'🐾';position:absolute;font-size:100px;opacity:.075;right:15px;top:-30px;transform:rotate(-20deg)}
+.feature-text{max-width:63%;position:relative;z-index:1}.banner-icon{font-size:26px;width:52px;height:52px;display:grid;place-items:center;border-radius:17px;background:#ffffffeb;margin-bottom:10px;box-shadow:0 3px 12px #9c4f1420}.feature-text h2{font-size:clamp(21px,2.6vw,27px);font-weight:900;line-height:1.1;margin:0 0 8px;letter-spacing:-.5px}.feature-text p{font-size:13px;line-height:1.42;margin:0 0 13px;max-width:300px}.banner-link{border-radius:12px;background:#fff;color:#153149;font-weight:800;display:inline-flex;gap:17px;align-items:center;justify-content:space-between;min-height:37px;padding:9px 13px;font-size:12px;box-shadow:0 3px 15px #62290d20}.banner-link span{font-size:15px}
+.banner-art{font-size:clamp(48px,7vw,88px);letter-spacing:-10px;white-space:nowrap;filter:drop-shadow(0 8px 6px #5d2c101c);align-self:center;margin-right:24px;z-index:1}.decor-heart{position:absolute;color:#fada43;font-size:30px;right:-18px;top:-20px;letter-spacing:0;filter:none}
+.banner-orange{background:linear-gradient(110deg,#ff8a0a 0%,#ff9d1c 60%,#ffc445 100%);color:white}.banner-orange .banner-link{color:#e36c00}.banner-gold{background:linear-gradient(110deg,#ffe28c,#ffd04c 55%,#ffebba);color:#293644}.banner-peach{background:linear-gradient(110deg,#fff3e3,#ffe5b8 60%,#ffcf75);color:#283747}
+.home-section-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:25px 0 14px}.home-section-heading h2{margin:5px 0 0;font-size:21px}.text-link{border:0;background:#ffeddb;color:#be641b;border-radius:10px;font-weight:800;padding:10px 13px}
+.home-pet-list{margin-bottom:20px}.pet-card,.panel,.lost-card{border-color:#f1e3d2;box-shadow:0 5px 18px #8c55120d}.pet-card{border-radius:18px}.pet-photo{background:#fff4e6}
+.shortcut-panel{display:grid;gap:9px;margin:18px 0 20px}.shortcut-panel button,.more-routes button{border:1px solid #f2e3d0;border-radius:15px;background:white;padding:16px;text-align:left;color:#173248;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 4px 15px #ae712212}.shortcut-panel span,.more-routes button>span:last-child{font-size:22px;color:#ed881e}.more-routes{display:grid;gap:9px;margin-top:18px}.more-routes button{width:100%}.more-routes button strong{flex:1}.menu-modal{max-width:450px}
+.profile-hero{border-radius:21px;background:linear-gradient(115deg,#ff8811,#ffb52d);color:white;display:flex;align-items:center;gap:14px;padding:20px;margin:0 0 18px;overflow:hidden}.profile-avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#fff7e7;font-size:37px}.profile-hero h2{margin:2px 0;font-size:23px}.profile-hero p{margin:0;font-size:13px}.profile-hero small{font-weight:800;letter-spacing:1px}.profile-hero>span{margin-left:auto;font-size:40px;opacity:.4}
+.welcome{background:#fff9ee;border-radius:18px;padding:18px;border:1px solid #f1e3d0}.welcome h1{font-size:26px}.toolbar input,.toolbar select{background:#fff}
+#homeView .container{max-width:980px}#homeView .hero{background:linear-gradient(120deg,#ffe3bd,#fffaf2)}
+@media(min-width:850px){.feature-stack{grid-template-columns:1fr 1fr}.feature-stack .feature-banner:first-child{grid-column:span 2;min-height:215px}.feature-banner{min-height:200px}.feature-stack .feature-banner:first-child .banner-art{font-size:105px}.home-pet-list{max-width:820px}}
+@media(max-width:850px){.header-more:not(.hidden){display:inline-grid;place-items:center}.dash-main{padding:17px 16px 110px}.sidebar{background:#fffefa}}
+@media(max-width:540px){
+.topbar{height:68px;padding:0 13px}.brand{font-size:23px}.top-actions{gap:6px}.top-actions #headerLogout{padding:9px 12px;font-size:12px}.header-more{width:37px;height:37px;font-size:19px}.paw{font-size:27px;width:35px}
+.sidebar{position:fixed;inset:auto 0 0;z-index:12;border:0;border-top:1px solid #f0e3d0;padding:6px 5px max(8px,env(safe-area-inset-bottom));box-shadow:0 -6px 28px #af81301c;background:#fffefb}
+.nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;overflow:visible}.nav button{flex-direction:column;justify-content:center;gap:3px;padding:8px 0 6px;border-radius:13px;min-width:0;text-align:center;white-space:normal;font-size:10px;min-height:54px}.nav-icon{font-size:23px}.nav-label{line-height:1.15;white-space:normal;word-break:normal;max-width:70px}.nav button.active{background:#fff1e3;color:#f47c0d}.nav button.active:after{content:'';width:5px;height:5px;background:#f47c0d;border-radius:50%}
+.dash-main{padding:12px 14px calc(110px + env(safe-area-inset-bottom))}.screen-intro{padding:14px 4px 17px}.screen-intro h2{font-size:25px}.screen-intro p{font-size:13px}
+.feature-stack{gap:13px}.feature-banner{min-height:170px;border-radius:19px;padding:16px}.feature-text{max-width:66%}.feature-text h2{font-size:20px}.feature-text p{font-size:12px}.banner-icon{width:42px;height:42px;font-size:22px;margin-bottom:8px}.banner-art{font-size:47px;letter-spacing:-8px;margin-right:12px}.decor-heart{font-size:20px;right:-12px}.banner-link{padding:8px 9px;font-size:11px;gap:7px;min-height:34px}
+.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:20px}.pet-list,.lost-grid{grid-template-columns:1fr}.pet-photo{height:185px}.welcome{display:flex;align-items:stretch;flex-direction:column;gap:10px}.welcome h1{font-size:24px}.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%}.toolbar input{flex:unset}.modal-backdrop{padding:10px}.modal{max-height:88dvh;overflow-y:auto}
+}
 </style>
 </head>
 <body>
 <div class="app">
 <header class="topbar">
   <div class="brand"><div class="paw">🐾</div><span>Patitas<em>.</em></span></div>
-  <div class="top-actions"><span class="pill" id="headerRole">Comunidad Petlover</span><button class="btn small" id="headerLogin" onclick="showLogin()">Ingresar</button><button class="btn small hidden" id="headerLogout" onclick="logout()">Salir</button></div>
+  <div class="top-actions"><span class="pill" id="headerRole">Comunidad Petlover</span><button class="btn small" id="headerLogin" onclick="showLogin()">Ingresar</button><button class="header-more hidden" id="headerMore" onclick="abrirMenuExtra()" aria-label="Más secciones" title="Más secciones">☰</button><button class="btn small hidden" id="headerLogout" onclick="logout()">Salir</button></div>
 </header>
 <main id="homeView">
   <div class="container">
@@ -199,7 +248,7 @@ let products=[
  {name:'Servicio de grooming',category:'Cuidado',price:'S/ 45.00',emoji:'🛁'}
 ];
 let requests=['Solicitud de adopción de Max','Consulta sobre campaña de donación','Nueva consulta de servicio'];
-function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover'}
+function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover'}
 function showLogin(role='owner'){hideViews();document.getElementById('loginView').classList.remove('hidden');chooseRole(role)}
 function hideViews(){
   ['homeView','loginView','registerView','dashboardView']
@@ -284,6 +333,7 @@ async function login(e) {
     document.getElementById('dashboardView').classList.remove('hidden');
     document.getElementById('headerLogin').classList.add('hidden');
     document.getElementById('headerLogout').classList.remove('hidden');
+    document.getElementById('headerMore').classList.remove('hidden');
     document.getElementById('headerRole').textContent = roleNames[currentRole];
     document.getElementById('sideName').textContent = currentUser;
     document.getElementById('sideRole').textContent = roleNames[currentRole];
@@ -310,52 +360,75 @@ currentRole = 'owner';
   showHome();
   toast('Sesión cerrada correctamente');
 }
-function renderNav(){let items=currentRole==='owner'?['Inicio','Mis mascotas','Adopciones','Servicios y productos','Comunidad','Mi perfil']:currentRole==='shelter'?['Inicio','Mascotas','Solicitudes','Donaciones','Campañas','Mi perfil']:['Inicio','Productos y servicios','Solicitudes','Promociones','Mi negocio','Mi perfil'];document.getElementById('nav').innerHTML=items.map((x,i)=>`<button class="${(i===0&&activePage==='inicio')?'active':''}" onclick="navigate('${x}')">${['⌂','🐾','♡','▣','✦','◉'][i]} &nbsp;${x}</button>`).join('')}
-function navigate(page){activePage=page.toLowerCase();renderNav();renderPage()}
-function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
-let html=`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div><button class="btn" onclick="openCreate()">＋ ${currentRole==='owner'?'Agregar mascota':currentRole==='shelter'?'Publicar mascota':'Agregar producto'}</button></div>`;
-if(activePage==='inicio'){
- html+=`<div class="stats"><div class="stat"><span class="stat-icon">🐾</span><span>${currentRole==='owner'?'Mis mascotas':'Publicaciones'}</span><strong>${currentRole==='owner'
-  ? pets.filter(p => p.owner_id === usuarioId).length
-  : pets.length}</strong></div><div class="stat"><span class="stat-icon">❤️</span><span>${currentRole==='shelter'?'Solicitudes':'Interacciones'}</span><strong>${currentRole==='shelter'?requests.length:12}</strong></div><div class="stat"><span class="stat-icon">🤝</span><span>${currentRole==='business'?'Clientes':'Comunidad'}</span><strong>${currentRole==='business'?28:156}</strong></div></div>`;
-if (currentRole === 'owner') {
-  html += `<div class="content-grid">
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Mis mascotas</h2>
-        <button class="btn light small"
-          onclick="navigate('Mis mascotas')">
-          Ver todas
-        </button>
-      </div>
-      <div class="pet-list">
-        ${
-pets.filter(p => p.owner_id === usuarioId).length
-?
-pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
-  p.emoji,
-  p.name,
-  p.kind,
-  p.status,
-  false,
-  p.foto,
-  p.id,
-  p.owner_id
-)).join('')
-          : '<div class="empty">Todavía no hay mascotas registradas.</div>'}
-      </div>
-    </div>
-    <div class="panel">
-      <h2>Actividad para ti</h2>
-      ${feed('🩺','Cuida su salud','Recuerda mantener al día sus controles veterinarios.')}
-      ${feed('❤️','Adopta una mascota','Hay nuevos amigos esperando un hogar.')}
-      ${feed('🛍️','Productos destacados','Descubre artículos para consentirlos.')}
-    </div>
-  </div>`;
+function opcionesPatitas() {
+  if (currentRole === 'shelter') return [
+    {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
+    {texto:'Rescatados',pagina:'Mascotas',icono:'🐾'},
+    {texto:'Donaciones',pagina:'Donaciones',icono:'♡'},
+    {texto:'Eventos',pagina:'Campañas',icono:'▣'},
+    {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
+  ];
+  if (currentRole === 'business') return [
+    {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
+    {texto:'Reporte',pagina:'Mi negocio',icono:'▥'},
+    {texto:'Productos',pagina:'Productos y servicios',icono:'▣'},
+    {texto:'Pedidos',pagina:'Solicitudes',icono:'☷'},
+    {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
+  ];
+  return [
+    {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
+    {texto:'Adoptar',pagina:'Adopciones',icono:'♡'},
+    {texto:'Productos',pagina:'Servicios y productos',icono:'▣'},
+    {texto:'Mis mascotas',pagina:'Mis mascotas',icono:'🐾'},
+    {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
+  ];
 }
- if(currentRole==='shelter')html+=`<div class="content-grid"><div class="panel"><div class="panel-head"><h2>Mascotas publicadas</h2><button class="btn light small" onclick="navigate('Mascotas')">Administrar</button></div><div class="pet-list">${pets.slice(0,4).map(p=>petTile(p.emoji,p.name,p.kind,p.status)).join('')}</div></div><div class="panel"><h2>Actividad reciente</h2>${requests.map(r=>feed('📩',r,'Revisa los detalles y responde a la comunidad.')).join('')}</div></div>`;
- if(currentRole==='business')html+=`<div class="content-grid"><div class="panel"><div class="panel-head"><h2>Tu catálogo</h2><button class="btn light small" onclick="navigate('Productos y servicios')">Ver catálogo</button></div>${products.slice(0,4).map(productRow).join('')}</div><div class="panel"><h2>Actividad reciente</h2>${requests.map(r=>feed('📩',r,'Hay una nueva interacción de un cliente.')).join('')}</div></div>`;
-
+function renderNav() {
+  document.getElementById('nav').innerHTML=opcionesPatitas().map(op=>
+    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}"><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span></button>`
+  ).join('');
+}
+function abrirMenuExtra(){
+  const rutas=currentRole==='owner'
+    ? [['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
+    : currentRole==='shelter'
+      ? [['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['✦','Comunidad','Comunidad']]
+      : [['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🎁','Promociones','Promociones']];
+  document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong><span>›</span></button>`).join('')}</div></div></div>`;
+}
+function portadaPatitas() {
+  const mias=pets.filter(p=>p.owner_id===usuarioId);
+  const acceso=(cls,icono,titulo,subtexto,boton,destino,figura)=>`<article class="feature-banner ${cls}">
+    <div class="feature-text"><div class="banner-icon">${icono}</div><h2>${titulo}</h2><p>${subtexto}</p><button type="button" class="banner-link" onclick="navigate('${destino}')">${boton}<span aria-hidden="true">➜</span></button></div>
+    <div class="banner-art" aria-hidden="true">${figura}<span class="decor-heart">♥</span></div>
+  </article>`;
+  if(currentRole==='shelter')return `<section class="screen-intro"><span class="tiny-kicker">UNIDOS POR SU BIENESTAR</span><h2>¡Bienvenido a tu albergue!</h2><p>Conecta animales rescatados con familias que quieren ayudar.</p></section><div class="feature-stack">
+   ${acceso('banner-orange','🐾','Mis rescatados','Gestiona los animales que esperan un hogar.','Ver rescatados','Mascotas','🐶 🐱')}
+   ${acceso('banner-gold','🎁','Donaciones','Recibe apoyo para los animales de tu refugio.','Ver donaciones','Donaciones','🥣 🦴')}
+   ${acceso('banner-peach','📅','Eventos','Comparte campañas y actividades de tu albergue.','Ver eventos','Campañas','🐕 🎈')}
+   </div><div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Solicitudes')">📩 Consultar solicitudes <span>›</span></button></div>`;
+  if(currentRole==='business')return `<section class="screen-intro"><span class="tiny-kicker">TU NEGOCIO TAMBIÉN AYUDA</span><h2>Pet Negocio</h2><p>Administra tu catálogo y conecta con la comunidad.</p></section><div class="feature-stack">
+    ${acceso('banner-orange','📈','Reporte estadístico','Consulta el movimiento de tu negocio.','Ver reporte','Mi negocio','📊 🐶')}
+    ${acceso('banner-gold','🛍️','Productos y servicios','Mantén actualizado tu catálogo de productos.','Ver catálogo','Productos y servicios','🥣 🧸')}
+    ${acceso('banner-peach','📩','Pedidos de clientes','Revisa el interés de nuevos clientes.','Ver pedidos','Solicitudes','🐱 📋')}
+    </div><div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button></div>`;
+  return `<section class="screen-intro"><span class="tiny-kicker">TODO PARA EL BIENESTAR DE TU MASCOTA</span><h2>¡Hola, ${escapeHtml(currentUser || 'Petlover')}! <span class="hello-paw">🐾</span></h2><p>Encuentra, adopta, cuida y sé parte del cambio.</p></section>
+  <div class="feature-stack">
+    ${acceso('banner-orange','🐾','Albergues y adopciones','Encuentra un hogar para una mascota.','Buscar mascotas','Adopciones','🐶 🐱')}
+    ${acceso('banner-gold','🏪','Negocios PET','Veterinarias, tiendas y servicios para tu mascota.','Explorar productos','Servicios y productos','🩺 🐕')}
+    ${acceso('banner-peach','🐕','Mis mascotas','Gestiona sus perfiles y fotografías.','Ver mis mascotas','Mis mascotas','🐱 🐶')}
+  </div>
+  <div class="home-section-heading"><div><span class="tiny-kicker">TU COMUNIDAD</span><h2>Tus compañeros</h2></div><button type="button" class="text-link" onclick="navigate('Mis mascotas')">Ver todas ›</button></div>
+  <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
+  <div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button></div>`;
+}
+function navigate(page){activePage=page.toLowerCase();renderNav();renderPage();if(activePage==='perdidas')cargarAvisos();}
+function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
+let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':(activePage.includes('producto')?'<button class="btn" onclick="openCreate()">＋ Agregar producto</button>':'')}</div>`;
+if(activePage==='inicio'){
+ html+=portadaPatitas();
+}else if(activePage==='perdidas'){
+  html += vistaAvisos();
 }else if(activePage.includes('mascota') || activePage === 'adopciones'){
   let list = activePage === 'mis mascotas'
     ? pets.filter(p => p.owner_id === usuarioId)
@@ -391,8 +464,10 @@ pets.filter(p => p.owner_id === usuarioId).map(p => petTile(
  html+=`<div class="toolbar"><input id="productSearch" placeholder="Buscar productos o servicios..." oninput="filterProducts()"><select><option>Todas las categorías</option><option>Alimentos</option><option>Salud</option><option>Accesorios</option></select></div><div class="panel" id="productResults">${products.map(productRow).join('')}</div>`;
 }else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')){
  html+=`<div class="panel"><div class="panel-head"><h2>${currentRole==='shelter'?'Solicitudes y apoyo':'Solicitudes recibidas'}</h2><span class="tag">${requests.length} pendientes</span></div>${requests.map((r,i)=>`<div class="product-row"><div class="product-left"><div class="product-emoji">${i===0?'🐾':'💌'}</div><div><strong>${r}</strong><small>Recibida recientemente · Pendiente de revisión</small></div></div><button class="btn light small" onclick="toast('Solicitud marcada para revisión')">Revisar</button></div>`).join('')}</div>`;
+}else if(activePage==='mi negocio'){
+ html+=`<div class="panel"><h2>📊 Reporte de negocio</h2><p class="muted">El panel estadístico detallado se implementará en una próxima etapa. Tu catálogo y solicitudes siguen disponibles desde el menú inferior.</p><button class="btn" onclick="navigate('Productos y servicios')">Ir a mis productos</button></div>`;
 }else if(activePage.includes('perfil')||activePage.includes('negocio')){
- html+=`<div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}"></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><div class="field"><label>Ubicación</label><input placeholder="Ciudad, distrito"></div><button class="btn" onclick="toast('Cambios guardados en esta demostración')">Guardar cambios</button></div>`;
+ html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
 }else{
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
@@ -949,6 +1024,166 @@ async function editarMascota(petId) {
   }
 }
 function filterProducts(){let q=(document.getElementById('productSearch')?.value||'').toLowerCase();let list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('productResults').innerHTML=list.length?list.map(productRow).join(''):'<div class="empty">No encontramos resultados.</div>'}
+
+// ===== AVISOS DE MASCOTAS PERDIDAS / ENCONTRADAS =====
+let avisosPerdidas = [];
+let errorAvisos = '';
+function vistaAvisos() {
+  return `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-head"><h2>🔎 Mascotas perdidas y encontradas</h2></div>
+    <p class="muted">Publica un aviso y ayuda a reunir a una mascota con su familia.</p>
+    <button class="btn" onclick="abrirNuevoAviso()">＋ Publicar aviso</button>
+  </div>
+  <div class="lost-toolbar">
+    <input id="buscarAvisos" placeholder="Buscar por nombre, distrito o descripción" oninput="mostrarAvisos()">
+    <select id="filtroAvisos" onchange="mostrarAvisos()">
+      <option value="activo">Avisos activos</option><option value="resuelto">Resueltos</option><option value="todos">Todos</option>
+    </select>
+    <select id="tipoAvisos" onchange="mostrarAvisos()">
+      <option value="todos">Perdidas y encontradas</option><option value="perdida">Perdidas</option><option value="encontrada">Encontradas</option>
+    </select>
+  </div>
+  <div id="resultadoAvisos"><p class="muted">Cargando avisos...</p></div>`;
+}
+async function cargarAvisos() {
+  if(activePage !== 'perdidas') return;
+  const {data,error} = await supabaseClient.from('lost_pets')
+    .select('*,lost_pet_photos(image_path,created_at)')
+    .order('created_at',{ascending:false});
+  if(activePage !== 'perdidas') return;
+  errorAvisos = error ? error.message : '';
+  avisosPerdidas = data || [];
+  mostrarAvisos();
+}
+function mostrarAvisos() {
+  const destino = document.getElementById('resultadoAvisos');
+  if(!destino) return;
+  if(errorAvisos){destino.innerHTML=`<div class="panel">No se pudieron cargar los avisos: ${escapeHtml(errorAvisos)}</div>`;return;}
+  const q = (document.getElementById('buscarAvisos')?.value || '').trim().toLowerCase();
+  const estado = document.getElementById('filtroAvisos')?.value || 'activo';
+  const tipo = document.getElementById('tipoAvisos')?.value || 'todos';
+  const lista = avisosPerdidas.filter(a =>
+    (estado==='todos' || a.status===estado) &&
+    (tipo==='todos' || a.report_type===tipo) &&
+    [a.pet_name,a.last_seen_location,a.description,a.species,a.color].join(' ').toLowerCase().includes(q)
+  );
+  destino.innerHTML = lista.length ? `<div class="lost-grid">${lista.map(avisoTarjeta).join('')}</div>`
+    : '<div class="panel empty">No se encontraron avisos con esos filtros.</div>';
+}
+function avisoTarjeta(a) {
+  const fotos = (a.lost_pet_photos || []).slice().sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
+  const url = fotos.length ? supabaseClient.storage.from('pet-photos').getPublicUrl(fotos[0].image_path).data.publicUrl : null;
+  const ilustracion = a.species?.toLowerCase()==='gato'?'🐱':'🐶';
+  const propia = usuarioId && a.user_id===usuarioId;
+  return `<article class="lost-card">
+    <div class="lost-photo">${url?`<img src="${escapeAttr(url)}" alt="Foto de aviso" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${ilustracion}</span>`:ilustracion}</div>
+    <div class="lost-body">
+      <span class="lost-tag ${a.status==='resuelto'?'found':''}">${a.status==='resuelto'?'Resuelto':a.report_type==='encontrada'?'Mascota encontrada':'Mascota perdida'}</span>
+      <h3>${escapeHtml(a.pet_name || a.species || 'Mascota sin nombre')}</h3>
+      <p><strong>Especie:</strong> ${escapeHtml(a.species || 'No indicada')}${a.breed?' · '+escapeHtml(a.breed):''}</p>
+      <p><strong>Lugar:</strong> ${escapeHtml(a.last_seen_location || '')}</p>
+      <p><strong>Fecha:</strong> ${escapeHtml(a.event_date || '')}</p>
+      ${a.color?`<p><strong>Color:</strong> ${escapeHtml(a.color)}</p>`:''}
+      ${a.description?`<p>${escapeHtml(a.description)}</p>`:''}
+      ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como resuelto</button>
+        <button class="btn small light" onclick="adjuntarFotoAviso('${escapeAttr(a.id)}')">📷 Adjuntar foto</button>`:''}
+    </div>
+  </article>`;
+}
+function abrirNuevoAviso() {
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <div class="modal-head"><h2>Publicar aviso</h2><button class="close" onclick="closeModal()">✕</button></div>
+    <form onsubmit="guardarNuevoAviso(event)">
+      <div class="field"><label>Tipo de aviso</label><select id="avTipo"><option value="perdida">Mascota perdida</option><option value="encontrada">Mascota encontrada</option></select></div>
+      <div class="field"><label>Nombre (opcional)</label><input id="avNombre" maxlength="100"></div>
+      <div class="field"><label>Especie</label><select id="avEspecie" required><option value="Perro">Perro</option><option value="Gato">Gato</option><option value="Otro">Otro</option></select></div>
+      <div class="field"><label>Raza (opcional)</label><input id="avRaza" maxlength="100"></div>
+      <div class="field"><label>Color (opcional)</label><input id="avColor" maxlength="100"></div>
+      <div class="field"><label>Distrito o lugar donde se vio</label><input id="avLugar" required maxlength="200" placeholder="Ej. Miraflores, Lima"></div>
+      <div class="field"><label>Fecha de desaparición o hallazgo</label><input id="avFecha" type="date" required></div>
+      <div class="field"><label>Descripción (opcional)</label><textarea id="avDescripcion" rows="3" maxlength="2000"></textarea></div>
+      <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máximo 5 MB)</label><input id="avFoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+      <button class="btn" type="submit" style="width:100%">Publicar aviso</button>
+    </form></div></div>`;
+  document.getElementById('avFecha').value = new Date().toLocaleDateString('en-CA');
+}
+function validarArchivoAviso(archivo) {
+  if(!archivo)return;
+  if(!['image/jpeg','image/png','image/webp'].includes(archivo.type) || archivo.size>5*1024*1024)
+    throw new Error('La foto debe ser JPG, PNG o WEBP y pesar como máximo 5 MB.');
+}
+async function subirFotoAviso(avisoId,archivo,userId) {
+  validarArchivoAviso(archivo);
+  const ext = archivo.type==='image/jpeg'?'jpg':archivo.type==='image/png'?'png':'webp';
+  const ruta = `${userId}/avisos/${crypto.randomUUID()}.${ext}`;
+  const bucket = supabaseClient.storage.from('pet-photos');
+  const {error:subidaError} = await bucket.upload(ruta,archivo,{contentType:archivo.type});
+  if(subidaError)throw subidaError;
+  const {error:fotoError} = await supabaseClient.from('lost_pet_photos').insert({lost_pet_id:avisoId,image_path:ruta});
+  if(fotoError){
+    const {error:limpiezaError}=await bucket.remove([ruta]);
+    if(limpiezaError) console.error('Foto de aviso sin vincular:',ruta,limpiezaError);
+    throw fotoError;
+  }
+}
+async function guardarNuevoAviso(e) {
+  e.preventDefault();
+  const boton=e.submitter;if(boton)boton.disabled=true;
+  try{
+    const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!user)throw new Error('Debes iniciar sesión.');
+    const archivo=document.getElementById('avFoto').files[0];
+    validarArchivoAviso(archivo);
+    const registro={user_id:user.id,report_type:document.getElementById('avTipo').value,
+      pet_name:document.getElementById('avNombre').value.trim()||null,
+      species:document.getElementById('avEspecie').value,
+      breed:document.getElementById('avRaza').value.trim()||null,
+      color:document.getElementById('avColor').value.trim()||null,
+      last_seen_location:document.getElementById('avLugar').value.trim(),
+      event_date:document.getElementById('avFecha').value,
+      description:document.getElementById('avDescripcion').value.trim()||null,
+      status:'activo'};
+    if(!registro.last_seen_location||!registro.event_date)throw new Error('Completa lugar y fecha.');
+    const {data:aviso,error}=await supabaseClient.from('lost_pets').insert(registro).select('id').single();
+    if(error)throw error;
+    closeModal();
+    if(archivo){
+      try{await subirFotoAviso(aviso.id,archivo,user.id);}
+      catch(fotoError){alert('El aviso se publicó, pero la foto no se pudo guardar. Puedes adjuntarla desde el aviso. Detalle: '+fotoError.message);}
+    }
+    await cargarAvisos();
+    toast('¡Aviso publicado!');
+  }catch(err){alert('No se pudo publicar: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+async function adjuntarFotoAviso(avisoId) {
+  const fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='image/jpeg,image/png,image/webp';
+  fileInput.onchange=async()=>{
+    if(!fileInput.files[0])return;
+    try{
+      const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+      if(authError||!user)throw new Error('Debes iniciar sesión.');
+      const {data:aviso,error:avisoError}=await supabaseClient.from('lost_pets').select('id').eq('id',avisoId).eq('user_id',user.id).single();
+      if(avisoError||!aviso)throw new Error('No tienes permiso para modificar el aviso.');
+      await subirFotoAviso(avisoId,fileInput.files[0],user.id);
+      await cargarAvisos();toast('Foto agregada al aviso.');
+    }catch(err){alert('No se pudo adjuntar la foto: '+err.message);}
+  };
+  fileInput.click();
+}
+async function resolverAviso(avisoId) {
+  if(!confirm('¿Marcar este aviso como resuelto?'))return;
+  try{
+    const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!user)throw new Error('Debes iniciar sesión.');
+    const {data,error}=await supabaseClient.from('lost_pets').update({status:'resuelto'})
+      .eq('id',avisoId).eq('user_id',user.id).select('id');
+    if(error)throw error;
+    if(!data?.length)throw new Error('No se pudo actualizar el aviso.');
+    await cargarAvisos();toast('Aviso marcado como resuelto.');
+  }catch(err){alert('No se pudo cambiar el estado: '+err.message);}
+}
+
 function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
