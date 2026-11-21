@@ -93,6 +93,19 @@ body{background:#fffbf3;color:var(--ink)}
 .feature-stack{gap:13px}.feature-banner{min-height:170px;border-radius:19px;padding:16px}.feature-text{max-width:66%}.feature-text h2{font-size:20px}.feature-text p{font-size:12px}.banner-icon{width:42px;height:42px;font-size:22px;margin-bottom:8px}.banner-art{font-size:47px;letter-spacing:-8px;margin-right:12px}.decor-heart{font-size:20px;right:-12px}.banner-link{padding:8px 9px;font-size:11px;gap:7px;min-height:34px}
 .stats{gap:6px}.stat{padding:10px}.stat strong{font-size:20px}.pet-list,.lost-grid{grid-template-columns:1fr}.pet-photo{height:185px}.welcome{display:flex;align-items:stretch;flex-direction:column;gap:10px}.welcome h1{font-size:24px}.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%}.toolbar input{flex:unset}.modal-backdrop{padding:10px}.modal{max-height:88dvh;overflow-y:auto}
 }
+/* Ajustes móviles: evita que el encabezado o el menú oculten controles. */
+html{scroll-padding-top:88px}
+.lost-toolbar input,.lost-toolbar select,.toolbar input,.toolbar select{scroll-margin-top:92px}
+.modal-backdrop{z-index:60}
+@media (max-width:540px){
+  .topbar{background:#fffdf6;z-index:25}
+  .dashboard .dash-main{padding-top:22px}
+  .lost-toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:stretch}
+  .lost-toolbar input,.lost-toolbar select{width:100%;max-width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.35;scroll-margin-top:94px}
+  .lost-toolbar input{flex:none}
+  .modal-backdrop{z-index:60}
+  .modal{max-height:calc(100dvh - 30px);overscroll-behavior:contain}
+}
 </style>
 </head>
 <body>
@@ -422,7 +435,7 @@ function portadaPatitas() {
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
   <div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button></div>`;
 }
-function navigate(page){activePage=page.toLowerCase();renderNav();renderPage();if(activePage==='perdidas')cargarAvisos();}
+function navigate(page){activePage=page.toLowerCase();renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
 let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':(activePage.includes('producto')?'<button class="btn" onclick="openCreate()">＋ Agregar producto</button>':'')}</div>`;
 if(activePage==='inicio'){
@@ -1037,7 +1050,7 @@ function vistaAvisos() {
   <div class="lost-toolbar">
     <input id="buscarAvisos" placeholder="Buscar por nombre, distrito o descripción" oninput="mostrarAvisos()">
     <select id="filtroAvisos" onchange="mostrarAvisos()">
-      <option value="activo">Avisos activos</option><option value="resuelto">Resueltos</option><option value="todos">Todos</option>
+      <option value="activo">Avisos activos</option><option value="resuelto">Encontradas (avisos cerrados)</option><option value="todos">Todos</option>
     </select>
     <select id="tipoAvisos" onchange="mostrarAvisos()">
       <option value="todos">Perdidas y encontradas</option><option value="perdida">Perdidas</option><option value="encontrada">Encontradas</option>
@@ -1078,14 +1091,14 @@ function avisoTarjeta(a) {
   return `<article class="lost-card">
     <div class="lost-photo">${url?`<img src="${escapeAttr(url)}" alt="Foto de aviso" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${ilustracion}</span>`:ilustracion}</div>
     <div class="lost-body">
-      <span class="lost-tag ${a.status==='resuelto'?'found':''}">${a.status==='resuelto'?'Resuelto':a.report_type==='encontrada'?'Mascota encontrada':'Mascota perdida'}</span>
+      <span class="lost-tag ${a.status==='resuelto'?'found':''}">${a.status==='resuelto'?'Encontrada':a.report_type==='encontrada'?'Mascota encontrada':'Mascota perdida'}</span>
       <h3>${escapeHtml(a.pet_name || a.species || 'Mascota sin nombre')}</h3>
       <p><strong>Especie:</strong> ${escapeHtml(a.species || 'No indicada')}${a.breed?' · '+escapeHtml(a.breed):''}</p>
       <p><strong>Lugar:</strong> ${escapeHtml(a.last_seen_location || '')}</p>
       <p><strong>Fecha:</strong> ${escapeHtml(a.event_date || '')}</p>
       ${a.color?`<p><strong>Color:</strong> ${escapeHtml(a.color)}</p>`:''}
       ${a.description?`<p>${escapeHtml(a.description)}</p>`:''}
-      ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como resuelto</button>
+      ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como encontrada</button>
         <button class="btn small light" onclick="adjuntarFotoAviso('${escapeAttr(a.id)}')">📷 Adjuntar foto</button>`:''}
     </div>
   </article>`;
@@ -1172,7 +1185,7 @@ async function adjuntarFotoAviso(avisoId) {
   fileInput.click();
 }
 async function resolverAviso(avisoId) {
-  if(!confirm('¿Marcar este aviso como resuelto?'))return;
+  if(!confirm('¿Confirmas que la mascota fue encontrada y quieres cerrar este aviso?'))return;
   try{
     const {data:{user},error:authError}=await supabaseClient.auth.getUser();
     if(authError||!user)throw new Error('Debes iniciar sesión.');
@@ -1180,7 +1193,7 @@ async function resolverAviso(avisoId) {
       .eq('id',avisoId).eq('user_id',user.id).select('id');
     if(error)throw error;
     if(!data?.length)throw new Error('No se pudo actualizar el aviso.');
-    await cargarAvisos();toast('Aviso marcado como resuelto.');
+    await cargarAvisos();toast('¡Mascota marcada como encontrada!');
   }catch(err){alert('No se pudo cambiar el estado: '+err.message);}
 }
 
