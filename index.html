@@ -131,6 +131,14 @@ html{scroll-padding-top:88px}
 .more-routes button .chat-unread-badge{font-size:12px;color:#fff;margin-left:auto}
 .chat-contact .chat-unread-badge{flex:none}
 .chat-message-status{font-weight:700}
+/* Solicitudes de cuentas especiales */
+.role-request-panel{margin:18px 0 20px}
+.role-request-panel p{line-height:1.55;color:var(--muted);font-size:14px}
+.role-request-form{display:grid;gap:12px}
+.role-request-status{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;font-weight:800;font-size:13px;background:#fff1df;color:#a95b13}
+.role-request-status.aprobado{background:#e9f8f0;color:#218357}
+.role-request-status.rechazado{background:#fff0ee;color:#bd3737}
+.role-request-panel .btn{width:100%;max-width:320px}
 </style>
 </head>
 <body>
@@ -524,11 +532,93 @@ if(activePage==='inicio'){
 }else if(activePage==='mi negocio'){
  html+=`<div class="panel"><h2>📊 Reporte de negocio</h2><p class="muted">El panel estadístico detallado se implementará en una próxima etapa. Tu catálogo y solicitudes siguen disponibles desde el menú inferior.</p><button class="btn" onclick="navigate('Productos y servicios')">Ir a mis productos</button></div>`;
 }else if(activePage.includes('perfil')||activePage.includes('negocio')){
- html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
+ html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div id="roleRequestArea" class="panel role-request-panel" aria-live="polite"><h2>🏡 Cuenta especial</h2><p>Consultando tu solicitud...</p></div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
 }else{
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
-root.innerHTML=html;actualizarIndicadoresChat()}
+root.innerHTML=html;actualizarIndicadoresChat();if(activePage==='mi perfil')cargarSolicitudRol();}
+
+// Solicitud de rol: una solicitud por usuario, revisada por un administrador.
+async function cargarSolicitudRol() {
+  const area = document.getElementById('roleRequestArea');
+  const idConsultado = usuarioId;
+  if (!area || !idConsultado || activePage !== 'mi perfil') return;
+  if (currentRole !== 'owner') {
+    area.innerHTML = `<h2>🏡 Cuenta especial</h2><p>Tu cuenta está habilitada como <strong>${escapeHtml(roleNames[currentRole])}</strong>.</p>`;
+    return;
+  }
+  area.innerHTML = '<h2>🏡 Solicitar cuenta especial</h2><p>Consultando el estado de tu solicitud...</p>';
+  try {
+    const {data,error} = await supabaseClient.from('role_requests')
+      .select('id,requested_role,status,created_at')
+      .eq('user_id',idConsultado).maybeSingle();
+    if (error) throw error;
+    if (usuarioId !== idConsultado || activePage !== 'mi perfil' ||
+        document.getElementById('roleRequestArea') !== area) return;
+    if (data) {
+      const nombreRol = data.requested_role === 'albergue' ? 'Albergue' : 'Negocio PET';
+      const estados = {pendiente:'Pendiente de revisión',aprobado:'Aprobada',rechazado:'Rechazada'};
+      const estado = estados[data.status] || 'En revisión';
+      const clase = ['aprobado','rechazado'].includes(data.status) ? data.status : '';
+      area.innerHTML = `<h2>🏡 Solicitud de cuenta especial</h2>
+        <p>Tipo solicitado: <strong>${nombreRol}</strong></p>
+        <span class="role-request-status ${clase}">${estado}</span>
+        <p>Solo un administrador autorizado puede aprobar o rechazar la solicitud.
+        ${data.status === 'aprobado' ? 'Si tu cuenta ya fue aprobada, vuelve a iniciar sesión para actualizar el perfil.' : ''}</p>`;
+    } else {
+      area.innerHTML = `<h2>🏡 Solicitar cuenta especial</h2>
+        <p>¿Representas a un albergue o negocio PET? Envía una solicitud para revisión. Mientras tanto, conservarás tu cuenta de dueño de mascota.</p>
+        <form class="role-request-form" onsubmit="enviarSolicitudRol(event)">
+          <div class="field"><label for="requestedRole">Tipo de cuenta que deseas solicitar</label>
+          <select id="requestedRole" required>
+            <option value="albergue">🏡 Albergue</option>
+            <option value="negocio">🛍️ Negocio PET</option>
+          </select></div>
+          <button class="btn" type="submit">Enviar solicitud</button>
+        </form><p style="font-size:12px">Solo puedes tener una solicitud registrada por cuenta.</p>`;
+    }
+  } catch (error) {
+    console.error('Error al consultar solicitud de rol:',error);
+    if (document.getElementById('roleRequestArea') === area) {
+      area.innerHTML = `<h2>🏡 Cuenta especial</h2><p>No se pudo consultar la solicitud.</p>
+      <button class="btn light" type="button" onclick="cargarSolicitudRol()">Reintentar</button>`;
+    }
+  }
+}
+
+async function enviarSolicitudRol(event) {
+  event.preventDefault();
+  const idSolicitante = usuarioId;
+  const boton = event.submitter;
+  const campo = document.getElementById('requestedRole');
+  const rol = campo?.value;
+  if (!idSolicitante || currentRole !== 'owner' || !['albergue','negocio'].includes(rol)) return;
+  if (!confirm(`¿Enviar tu solicitud para ser ${rol === 'albergue' ? 'Albergue' : 'Negocio PET'}?`)) return;
+  if (boton) boton.disabled = true;
+  try {
+    const {data:{user},error:authError} = await supabaseClient.auth.getUser();
+    if (authError || !user || user.id !== idSolicitante) throw new Error('Inicia sesión nuevamente.');
+    const {error} = await supabaseClient.from('role_requests').insert({
+      user_id: user.id,
+      requested_role: rol,
+      status: 'pendiente'
+    });
+    if (error) {
+      if (error.code === '23505') {
+        await cargarSolicitudRol();
+        alert('Ya existe una solicitud para esta cuenta.');
+        return;
+      }
+      throw error;
+    }
+    toast('¡Solicitud enviada para revisión!');
+    await cargarSolicitudRol();
+  } catch (error) {
+    alert('No se pudo enviar la solicitud: ' + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
 
 async function eliminarMascota(petId) {
   const confirmar = confirm(
