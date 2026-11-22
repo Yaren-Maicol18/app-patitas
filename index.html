@@ -106,6 +106,24 @@ html{scroll-padding-top:88px}
   .modal-backdrop{z-index:60}
   .modal{max-height:calc(100dvh - 30px);overscroll-behavior:contain}
 }
+/* Chat privado de mascotas perdidas */
+.chat-intro{margin-bottom:16px}
+.chat-inbox{display:grid;gap:11px}
+.chat-contact{width:100%;display:flex;align-items:center;gap:13px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:16px;padding:15px;color:var(--ink)}
+.chat-contact:hover{border-color:#f7ae62;background:#fffbf5}
+.chat-contact-icon{width:46px;height:46px;flex:none;border-radius:14px;background:#ffecd5;display:grid;place-items:center;font-size:24px}
+.chat-contact-body{flex:1;min-width:0}.chat-contact-body strong{display:block;font-size:15px}.chat-contact-body small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere;margin-top:4px}
+.chat-shell{border:1px solid var(--line);border-radius:19px;background:white;overflow:hidden}
+.chat-header{padding:15px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.chat-header button{flex:none}.chat-header div{min-width:0}.chat-header strong{display:block;overflow-wrap:anywhere}.chat-header small{color:var(--muted)}
+.chat-messages{height:min(52dvh,460px);min-height:230px;overflow-y:auto;display:flex;flex-direction:column;gap:11px;padding:17px;background:#fffbf5;overscroll-behavior:contain}
+.chat-bubble{padding:11px 13px;border-radius:16px;max-width:85%;background:white;border:1px solid #e9ddce;overflow-wrap:anywhere;align-self:flex-start}
+.chat-bubble.mine{background:#ffe7c7;border-color:#ffd5a2;align-self:flex-end}
+.chat-bubble p{margin:0 0 4px;white-space:pre-wrap;line-height:1.42;font-size:14px}.chat-bubble small{display:block;color:#78838a;text-align:right;font-size:10px}
+.chat-compose{padding:12px;display:flex;gap:9px;align-items:end;border-top:1px solid var(--line)}
+.chat-compose textarea{flex:1;min-width:0;resize:vertical;max-height:110px;min-height:46px;border-radius:12px;padding:11px;border:1px solid #e9ddce;font-size:16px}
+.chat-compose button{min-height:46px}.chat-hint{font-size:12px;color:var(--muted);padding:0 14px 14px;margin:0}
+@media(max-width:540px){.chat-messages{height:48dvh;min-height:230px}.chat-shell{border-radius:16px}.chat-compose{padding:9px}.chat-compose .btn{padding:10px}}
 </style>
 </head>
 <body>
@@ -220,6 +238,9 @@ const roleIcons={owner:'🐕',shelter:'🏡',business:'🛍️'};
 let currentUser=null,currentRole='owner',activePage='inicio';
 let pets = [];
 let usuarioId = null;
+let conversacionActivaId = null;
+let chatPollingId = null;
+let chatRefreshInProgress = false;
 async function cargarMascotas() {
   const { data, error } = await supabaseClient
     .from('pets')
@@ -351,6 +372,7 @@ async function login(e) {
     document.getElementById('sideName').textContent = currentUser;
     document.getElementById('sideRole').textContent = roleNames[currentRole];
     document.getElementById('sideAvatar').textContent = roleIcons[currentRole];
+    conversacionActivaId = null;
     activePage = 'inicio';
     renderNav();
     renderPage();
@@ -368,6 +390,8 @@ async function logout() {
   }
 currentUser = null;
 usuarioId = null;
+conversacionActivaId = null;
+if (chatPollingId) { clearInterval(chatPollingId); chatPollingId = null; }
 pets = [];
 currentRole = 'owner';
   showHome();
@@ -403,10 +427,10 @@ function renderNav() {
 }
 function abrirMenuExtra(){
   const rutas=currentRole==='owner'
-    ? [['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
+    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
     : currentRole==='shelter'
-      ? [['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['✦','Comunidad','Comunidad']]
-      : [['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🎁','Promociones','Promociones']];
+      ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['✦','Comunidad','Comunidad']]
+      : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🎁','Promociones','Promociones']];
   document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong><span>›</span></button>`).join('')}</div></div></div>`;
 }
 function portadaPatitas() {
@@ -419,12 +443,12 @@ function portadaPatitas() {
    ${acceso('banner-orange','🐾','Mis rescatados','Gestiona los animales que esperan un hogar.','Ver rescatados','Mascotas','🐶 🐱')}
    ${acceso('banner-gold','🎁','Donaciones','Recibe apoyo para los animales de tu refugio.','Ver donaciones','Donaciones','🥣 🦴')}
    ${acceso('banner-peach','📅','Eventos','Comparte campañas y actividades de tu albergue.','Ver eventos','Campañas','🐕 🎈')}
-   </div><div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Solicitudes')">📩 Consultar solicitudes <span>›</span></button></div>`;
+   </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Solicitudes')">📩 Consultar solicitudes <span>›</span></button></div>`;
   if(currentRole==='business')return `<section class="screen-intro"><span class="tiny-kicker">TU NEGOCIO TAMBIÉN AYUDA</span><h2>Pet Negocio</h2><p>Administra tu catálogo y conecta con la comunidad.</p></section><div class="feature-stack">
     ${acceso('banner-orange','📈','Reporte estadístico','Consulta el movimiento de tu negocio.','Ver reporte','Mi negocio','📊 🐶')}
     ${acceso('banner-gold','🛍️','Productos y servicios','Mantén actualizado tu catálogo de productos.','Ver catálogo','Productos y servicios','🥣 🧸')}
     ${acceso('banner-peach','📩','Pedidos de clientes','Revisa el interés de nuevos clientes.','Ver pedidos','Solicitudes','🐱 📋')}
-    </div><div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button></div>`;
+    </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button></div>`;
   return `<section class="screen-intro"><span class="tiny-kicker">TODO PARA EL BIENESTAR DE TU MASCOTA</span><h2>¡Hola, ${escapeHtml(currentUser || 'Petlover')}! <span class="hello-paw">🐾</span></h2><p>Encuentra, adopta, cuida y sé parte del cambio.</p></section>
   <div class="feature-stack">
     ${acceso('banner-orange','🐾','Albergues y adopciones','Encuentra un hogar para una mascota.','Buscar mascotas','Adopciones','🐶 🐱')}
@@ -433,15 +457,17 @@ function portadaPatitas() {
   </div>
   <div class="home-section-heading"><div><span class="tiny-kicker">TU COMUNIDAD</span><h2>Tus compañeros</h2></div><button type="button" class="text-link" onclick="navigate('Mis mascotas')">Ver todas ›</button></div>
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
-  <div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button></div>`;
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button></div>`;
 }
-function navigate(page){activePage=page.toLowerCase();renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();}
+function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='mensajes')cargarConversaciones();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
 let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':(activePage.includes('producto')?'<button class="btn" onclick="openCreate()">＋ Agregar producto</button>':'')}</div>`;
 if(activePage==='inicio'){
  html+=portadaPatitas();
 }else if(activePage==='perdidas'){
-  html += vistaAvisos();
+   html += vistaAvisos();
+ }else if(activePage==='mensajes'){
+   html += vistaMensajes();
 }else if(activePage.includes('mascota') || activePage === 'adopciones'){
   let list = activePage === 'mis mascotas'
     ? pets.filter(p => p.owner_id === usuarioId)
@@ -480,7 +506,7 @@ if(activePage==='inicio'){
 }else if(activePage==='mi negocio'){
  html+=`<div class="panel"><h2>📊 Reporte de negocio</h2><p class="muted">El panel estadístico detallado se implementará en una próxima etapa. Tu catálogo y solicitudes siguen disponibles desde el menú inferior.</p><button class="btn" onclick="navigate('Productos y servicios')">Ir a mis productos</button></div>`;
 }else if(activePage.includes('perfil')||activePage.includes('negocio')){
- html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div class="shortcut-panel"><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
+ html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
 }else{
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
@@ -1100,6 +1126,7 @@ function avisoTarjeta(a) {
       ${a.description?`<p>${escapeHtml(a.description)}</p>`:''}
       ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como encontrada</button>
         <button class="btn small light" onclick="adjuntarFotoAviso('${escapeAttr(a.id)}')">📷 Adjuntar foto</button>`:''}
+      ${!propia && a.status==='activo' && a.report_type==='perdida'?`<button type="button" class="btn small" style="margin-top:10px" onclick="contactarDueno('${escapeAttr(a.id)}')">💬 Contactar al dueño</button>`:''}
       ${propia?`<button type="button" class="btn small" style="background:#dc3545;color:#fff;margin-top:9px" onclick="eliminarAviso('${escapeAttr(a.id)}')">🗑️ Eliminar aviso</button>`:''}
     </div>
   </article>`;
@@ -1249,6 +1276,160 @@ async function eliminarAviso(avisoId) {
     console.error('Error al eliminar el aviso:', error);
     alert('No se pudo eliminar el aviso: ' + error.message);
   }
+}
+
+
+// ===== CHAT PRIVADO DE AVISOS (Supabase) =====
+// Un usuario puede contactar únicamente al dueño de un aviso activo de tipo perdida.
+// Los permisos de lectura y escritura se vuelven a comprobar en Supabase mediante RLS.
+function vistaMensajes() {
+  return `<div class="panel chat-intro"><div class="panel-head"><h2>💬 Mis mensajes</h2>
+    <button class="btn light small" type="button" onclick="cargarConversaciones()">↻ Actualizar</button></div>
+    <p class="muted">Conversa de forma privada con las personas que publicaron o encontraron una mascota.</p></div>
+    <div id="chatView"><div class="panel empty">Cargando conversaciones...</div></div>`;
+}
+function iniciarActualizacionChat() {
+  if (chatPollingId) clearInterval(chatPollingId);
+  chatPollingId = setInterval(async () => {
+    if (activePage !== 'mensajes' || !usuarioId || !conversacionActivaId || chatRefreshInProgress) return;
+    chatRefreshInProgress = true;
+    try { await cargarMensajes(true); }
+    finally { chatRefreshInProgress = false; }
+  }, 7000);
+}
+function obtenerParticipante(c) {
+  return c.owner_id === usuarioId ? 'Persona que encontró la mascota' : 'Dueño de la mascota';
+}
+function obtenerTituloChat(c) {
+  const n = c.lost_pets?.pet_name;
+  return n ? `Aviso de ${n}` : (c.lost_pet_id ? 'Aviso de mascota perdida' : 'Aviso eliminado');
+}
+async function cargarConversaciones() {
+  if (activePage !== 'mensajes') return;
+  const destino = document.getElementById('chatView');
+  if (!destino) return;
+  conversacionActivaId = null;
+  destino.innerHTML = '<div class="panel empty">Cargando conversaciones...</div>';
+  try {
+    if (!usuarioId) throw new Error('Debes iniciar sesión.');
+    const { data, error } = await supabaseClient.from('conversations')
+      .select('id,owner_id,finder_id,lost_pet_id,created_at,lost_pets(pet_name)')
+      .or(`owner_id.eq.${usuarioId},finder_id.eq.${usuarioId}`)
+      .order('created_at', { ascending:false });
+    if (error) throw error;
+    if (activePage !== 'mensajes' || conversacionActivaId) return;
+    destino.innerHTML = data?.length
+      ? `<div class="chat-inbox">${data.map(c => `<button type="button" class="chat-contact" onclick="abrirConversacion('${escapeAttr(c.id)}')">
+           <span class="chat-contact-icon">💬</span><span class="chat-contact-body"><strong>${escapeHtml(obtenerTituloChat(c))}</strong>
+           <small>${escapeHtml(obtenerParticipante(c))} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span>›</span></button>`).join('')}</div>`
+      : '<div class="panel empty">Todavía no tienes conversaciones. Para iniciar una, entra a Mascotas perdidas y pulsa «Contactar al dueño» en un aviso de otra persona.</div>';
+  } catch (error) {
+    if (activePage === 'mensajes' && !conversacionActivaId)
+      destino.innerHTML = `<div class="panel">No se pudieron cargar las conversaciones: ${escapeHtml(error.message)}</div>`;
+  }
+}
+async function contactarDueno(avisoId) {
+  try {
+    const {data:auth, error:authError} = await supabaseClient.auth.getUser();
+    const user = auth?.user;
+    if (authError || !user) throw new Error('Debes iniciar sesión.');
+    const {data:aviso,error:avisoError} = await supabaseClient.from('lost_pets')
+      .select('id,user_id,report_type,status').eq('id',avisoId).single();
+    if (avisoError || !aviso) throw new Error('Este aviso ya no está disponible.');
+    if (aviso.user_id === user.id) throw new Error('No puedes enviarte mensajes a ti mismo.');
+    if (aviso.report_type !== 'perdida' || aviso.status !== 'activo')
+      throw new Error('Solo puedes iniciar chats desde avisos activos de mascotas perdidas.');
+    let {data:conversacion,error:buscarError} = await supabaseClient.from('conversations')
+      .select('id').eq('lost_pet_id',avisoId).eq('finder_id',user.id).maybeSingle();
+    if (buscarError) throw buscarError;
+    if (!conversacion) {
+      const nuevo = await supabaseClient.from('conversations')
+        .insert({lost_pet_id:avisoId,owner_id:aviso.user_id,finder_id:user.id})
+        .select('id').single();
+      if (nuevo.error) {
+        // Si se pulsó dos veces, otra solicitud pudo haber creado la conversación.
+        if (nuevo.error.code !== '23505') throw nuevo.error;
+        const existente = await supabaseClient.from('conversations').select('id')
+          .eq('lost_pet_id',avisoId).eq('finder_id',user.id).single();
+        if (existente.error) throw existente.error;
+        conversacion = existente.data;
+      } else conversacion = nuevo.data;
+    }
+    navigate('Mensajes');
+    await abrirConversacion(conversacion.id);
+  } catch (error) {
+    alert('No se pudo abrir el chat: ' + error.message);
+  }
+}
+async function abrirConversacion(conversacionId) {
+  if (activePage !== 'mensajes') navigate('Mensajes');
+  const destino = document.getElementById('chatView');
+  if (!destino) return;
+  conversacionActivaId = conversacionId;
+  destino.innerHTML = '<div class="panel empty">Abriendo conversación...</div>';
+  try {
+    const {data:c,error} = await supabaseClient.from('conversations')
+      .select('id,owner_id,finder_id,lost_pet_id,lost_pets(pet_name)').eq('id',conversacionId).single();
+    if (error || !c) throw error || new Error('Conversación no disponible.');
+    if (activePage !== 'mensajes' || conversacionActivaId !== conversacionId) return;
+    destino.innerHTML = `<section class="chat-shell">
+      <div class="chat-header"><button type="button" class="btn light small" onclick="cargarConversaciones()">← Volver</button>
+      <div><strong>${escapeHtml(obtenerTituloChat(c))}</strong><small>${escapeHtml(obtenerParticipante(c))}</small></div></div>
+      <div class="chat-messages" id="chatMessages" aria-live="polite">Cargando mensajes...</div>
+      <form class="chat-compose" onsubmit="enviarMensaje(event)">
+      <textarea id="chatTexto" maxlength="2000" rows="2" required placeholder="Escribe tu mensaje..."></textarea>
+      <button class="btn" type="submit">Enviar</button></form>
+      <p class="chat-hint">Por tu seguridad, evita compartir datos personales hasta verificar con quién conversas.</p></section>`;
+    await cargarMensajes();
+    iniciarActualizacionChat();
+  } catch (error) {
+    if (activePage === 'mensajes' && conversacionActivaId === conversacionId)
+      destino.innerHTML = `<div class="panel">Error al abrir conversación: ${escapeHtml(error.message)}<p><button class="btn light small" onclick="cargarConversaciones()">Volver</button></p></div>`;
+  }
+}
+async function cargarMensajes(silencioso = false) {
+  const id = conversacionActivaId;
+  const destino = document.getElementById('chatMessages');
+  if (activePage !== 'mensajes' || !id || !destino) return;
+  try {
+    const {data,error} = await supabaseClient.from('messages')
+      .select('id,sender_id,content,created_at').eq('conversation_id',id)
+      .order('created_at',{ascending:true}).limit(300);
+    if (error) throw error;
+    if (conversacionActivaId !== id || activePage !== 'mensajes') return;
+    const cercaDelFinal = destino.scrollHeight - destino.scrollTop - destino.clientHeight < 85;
+    const antes = destino.innerHTML;
+    const nuevo = data?.length ? data.map(m => `<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p>
+      <small>${new Date(m.created_at).toLocaleString('es-PE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></div>`).join('')
+      : '<div class="empty">Todavía no hay mensajes. ¡Escribe el primero!</div>';
+    if (antes !== nuevo) {
+      destino.innerHTML = nuevo;
+      if (!silencioso || cercaDelFinal) destino.scrollTop = destino.scrollHeight;
+    }
+  } catch (error) {
+    if (!silencioso && conversacionActivaId === id)
+      destino.innerHTML = `<div class="empty">Error al cargar mensajes: ${escapeHtml(error.message)}</div>`;
+    else console.error('Error al actualizar mensajes:',error);
+  }
+}
+async function enviarMensaje(e) {
+  e.preventDefault();
+  const id = conversacionActivaId;
+  const input = document.getElementById('chatTexto');
+  const contenido = input?.value.trim() || '';
+  if (!id || !contenido || contenido.length > 2000) return;
+  const boton = e.submitter;
+  if (boton) boton.disabled = true;
+  try {
+    const {data:auth,error:authError} = await supabaseClient.auth.getUser();
+    if (authError || !auth?.user) throw new Error('Debes iniciar sesión.');
+    const {error} = await supabaseClient.from('messages')
+      .insert({conversation_id:id,sender_id:auth.user.id,content:contenido});
+    if (error) throw error;
+    if (conversacionActivaId === id && input) input.value='';
+    await cargarMensajes();
+  } catch (error) { alert('No se pudo enviar el mensaje: ' + error.message); }
+  finally { if (boton) boton.disabled=false; }
 }
 
 function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
