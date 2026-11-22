@@ -1,0 +1,87 @@
+
+name: Verificar Patitas
+
+on:
+  push:
+    branches:
+      - desarrollo
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar-codigo:
+    name: Verificar HTML y JavaScript
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verificar existencia del HTML
+        run: |
+          test -f index.html
+          echo "index.html encontrado"
+
+      - name: Extraer y verificar JavaScript
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.scripts = []
+                  self.capturing = False
+
+              def handle_starttag(self, tag, attrs):
+                  if tag == "script":
+                      attrs = dict(attrs)
+                      self.capturing = (
+                          "src" not in attrs
+                          and attrs.get("type", "") in
+                          ("", "text/javascript")
+                      )
+
+              def handle_data(self, data):
+                  if self.capturing:
+                      self.scripts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag == "script":
+                      self.capturing = False
+
+          parser = Scripts()
+          parser.feed(
+              Path("index.html").read_text(encoding="utf-8")
+          )
+
+          if not parser.scripts:
+              raise SystemExit("No se encontro JavaScript")
+
+          output = Path("/tmp/patitas-scripts")
+          output.mkdir(exist_ok=True)
+
+          for i, script in enumerate(parser.scripts):
+              (output / f"script-{i}.js").write_text(
+                  script, encoding="utf-8"
+              )
+
+          print(f"Scripts encontrados: {len(parser.scripts)}")
+          PY
+
+          for archivo in /tmp/patitas-scripts/*.js; do
+            node --check "$archivo"
+          done
+
+          echo "JavaScript verificado correctamente"
