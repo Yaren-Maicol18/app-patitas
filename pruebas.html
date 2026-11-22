@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#fffaf0">
+<title>Patitas | Comunidad Petlover</title>  
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--orange:#f58220;--orange2:#ff9d35;--ink:#263238;--muted:#77838b;--cream:#fff8ef;--line:#f0e7dc;--green:#269b69;--red:#e45d55;--shadow:0 12px 35px rgba(68,46,24,.08)}
+*{box-sizing:border-box}body{margin:0;background:#fffdf9;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.hidden{display:none!important}.app{min-height:100vh}.topbar{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 max(5vw,22px);background:#fff;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;font-size:23px;font-weight:900;color:#20334b;letter-spacing:-1px}.paw{width:39px;height:39px;border-radius:13px;background:var(--orange);display:grid;place-items:center;color:#fff;font-size:24px}.brand span em{color:var(--orange);font-style:normal}.top-actions{display:flex;gap:10px;align-items:center}.pill{border-radius:999px;padding:10px 17px;background:#fff4e8;color:#bd6418;font-weight:700}.btn{border-radius:12px;padding:12px 18px;background:var(--orange);color:white;font-weight:800;box-shadow:0 6px 15px #f5822030}.btn:hover{background:#e87514;transform:translateY(-1px)}.btn.light{background:#fff1e3;color:#bd6418;box-shadow:none}.btn.outline{background:white;color:var(--orange);border:1px solid #ffd4ad;box-shadow:none}.btn.small{padding:8px 12px;font-size:13px}.container{max-width:1180px;margin:auto;padding:30px 24px 90px}.hero{background:linear-gradient(115deg,#fff0df,#fff9f1 62%,#ffe4c8);border-radius:27px;padding:42px;display:grid;grid-template-columns:1.1fr .9fr;gap:25px;align-items:center;overflow:hidden}.eyebrow{color:#d66d13;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-size:12px}.hero h1{font-size:clamp(32px,4vw,52px);line-height:1.06;margin:12px 0}.hero p{color:#68737a;line-height:1.7;max-width:530px}.hero-art{font-size:120px;text-align:center;filter:drop-shadow(0 14px 12px #9b653333)}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:32px 0 17px}.section-head h2{margin:0;font-size:24px}.section-head p{margin:5px 0 0;color:var(--muted);font-size:14px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}.card{background:#fff;border:1px solid var(--line);border-radius:19px;padding:19px;box-shadow:var(--shadow)}.role-card{cursor:pointer;transition:.2s}.role-card:hover{transform:translateY(-4px);border-color:#ffc58f}.role-icon{width:53px;height:53px;border-radius:16px;background:#fff1e2;display:grid;place-items:center;font-size:27px;margin-bottom:13px}.role-card h3{margin:0 0 7px}.role-card p{color:var(--muted);font-size:14px;line-height:1.55;margin:0 0 14px}.role-card a{color:#d66d13;font-weight:800;font-size:13px}.login-wrap{min-height:calc(100vh - 72px);display:grid;place-items:center;padding:30px 18px;background:linear-gradient(130deg,#fff7ee,#fff 55%,#ffeddb)}.login-card{width:min(480px,100%);padding:32px;background:#fff;border-radius:24px;box-shadow:var(--shadow);border:1px solid var(--line)}.login-card h1{margin:8px 0}.muted{color:var(--muted)}.field{display:grid;gap:7px;margin:14px 0}.field label{font-size:13px;font-weight:800}.field input,.field select,.field textarea{width:100%;padding:12px 13px;border:1px solid #e9e2da;border-radius:11px;outline:none;background:#fff}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px #f5822019}.role-select{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.role-option{padding:12px 7px;border:1px solid var(--line);border-radius:12px;text-align:center;background:white;font-size:12px;font-weight:800}.role-option.active{border-color:var(--orange);background:#fff4e8;color:#bd6418}.dashboard{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 72px)}.sidebar{padding:25px 16px;border-right:1px solid var(--line);background:#fff}.user-mini{display:flex;gap:10px;align-items:center;padding:12px;background:#fff7ee;border-radius:14px;margin-bottom:22px}.avatar{width:40px;height:40px;border-radius:13px;background:#ffe0bd;display:grid;place-items:center;font-size:22px}.user-mini strong{display:block;font-size:13px}.user-mini small{color:var(--muted)}.nav{display:grid;gap:5px}.nav button{padding:12px;border-radius:11px;background:transparent;text-align:left;color:#647078;font-weight:700}.nav button.active,.nav button:hover{background:#fff1e3;color:#c56817}.dash-main{padding:30px;max-width:1200px;width:100%;margin:0 auto}.welcome{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:23px}.welcome h1{margin:0 0 5px;font-size:28px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}.stat{padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff}.stat span{font-size:13px;color:var(--muted)}.stat strong{display:block;font-size:27px;margin-top:6px}.stat-icon{float:right;font-size:22px}.content-grid{display:grid;grid-template-columns:1.35fr .9fr;gap:17px}.pet-list{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.pet-card{border:1px solid var(--line);border-radius:15px;overflow:hidden;background:white}.pet-photo{height:130px;overflow:hidden;display:grid;place-items:center;background:linear-gradient(135deg,#ffe7cd,#fff4e8);font-size:65px}.pet-info{padding:13px}.pet-info h3{margin:0 0 4px;font-size:16px}.pet-info p{margin:0 0 10px;color:var(--muted);font-size:12px}.tag{display:inline-block;padding:5px 9px;border-radius:99px;background:#e9f8f0;color:#218357;font-size:11px;font-weight:800}.feed{display:grid;gap:10px}.feed-item{display:flex;gap:11px;padding:12px;border:1px solid var(--line);border-radius:13px}.feed-item .emoji{font-size:23px}.feed-item strong{font-size:13px}.feed-item p{font-size:12px;color:var(--muted);margin:4px 0 0}.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:19px}.panel h2,.panel h3{margin:0 0 13px}.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-head h2{margin:0;font-size:18px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:17px}.toolbar input,.toolbar select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:white}.toolbar input{flex:1;min-width:160px}.product-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.product-row:last-child{border:0}.product-left{display:flex;align-items:center;gap:12px}.product-emoji{width:47px;height:47px;border-radius:13px;background:#fff1e3;display:grid;place-items:center;font-size:24px}.product-row small{display:block;color:var(--muted);margin-top:3px}.price{font-weight:900;color:#d66d13}.empty{padding:30px;text-align:center;color:var(--muted)}.modal-backdrop{position:fixed;inset:0;background:#17212c77;display:grid;place-items:center;padding:18px;z-index:10}.modal{
+  width:min(490px,100%);
+  max-height:90vh;
+  overflow-y:auto;
+  background:white;
+  border-radius:20px;
+  padding:24px;
+  box-shadow:0 20px 70px #0003;
+}.modal-head{display:flex;justify-content:space-between;align-items:center}.close{background:#f4f1ed;border-radius:9px;padding:7px 11px}.toast{position:fixed;bottom:22px;right:22px;background:#263238;color:white;padding:13px 18px;border-radius:12px;z-index:20;box-shadow:var(--shadow)}.footer{text-align:center;padding:24px;color:#92999e;font-size:12px}.mobile-nav{display:none}
+@media (max-width:540px){
+.dashboard{display:block;min-height:calc(100dvh - 62px)}
+.sidebar{position:fixed;bottom:0;left:0;right:0;top:auto;z-index:9;background:#fffdf9;border-top:1px solid #f0e7dc;border-bottom:none;padding:8px 4px max(8px,env(safe-area-inset-bottom));box-shadow:0 -5px 20px rgba(0,0,0,.06)}
+.sidebar .user-mini{display:none}
+.nav{display:flex;justify-content:space-around;gap:2px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{flex:1;min-width:0;padding:10px 2px;font-size:10px;text-align:center;white-space:normal;border-radius:12px}
+.nav button.active{background:#fff1e3;color:#f58220}
+.dash-main{padding:18px 14px 105px}
+.pet-list{grid-template-columns:1fr}
+.pet-photo{height:180px}
+.pet-photo img{width:100%;height:100%!important;object-fit:contain}
+.modal-backdrop{padding:10px}
+.modal{max-height:88dvh;overflow-y:auto}
+}
+@media(max-width:850px){.hero{grid-template-columns:1fr;padding:30px}.hero-art{font-size:80px}.grid{grid-template-columns:1fr}.dashboard{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid var(--line);padding:10px 14px}.user-mini{display:none}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap;padding:10px}.dash-main{padding:22px 16px}.content-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:13px}.stat strong{font-size:22px}}
+@media(max-width:540px){.topbar{height:62px;padding:0 15px}.brand{font-size:20px}.top-actions .pill{display:none}.container{padding:20px 15px 55px}.hero{padding:25px 21px}.hero-art{display:none}.hero h1{font-size:35px}.section-head{align-items:start;flex-direction:column}.stats{gap:8px}.stat span{font-size:11px}.stat strong{font-size:20px}.pet-list{grid-template-columns:1fr}.pet-photo{height:180px;font-size:48px}.welcome{align-items:start;flex-direction:column}.dash-main{padding:18px 14px 105px}.login-card{padding:24px 20px}.nav button{white-space:normal;padding:10px 2px;font-size:10px}}
+.pet-photo {
+  position: relative;
+}
+.pet-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+/* Avisos de mascotas perdidas y encontradas */
+.lost-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 20px}
+.lost-toolbar input,.lost-toolbar select{padding:12px;border:1px solid var(--line);border-radius:11px;background:white;min-width:0}
+.lost-toolbar input{flex:1 1 190px}
+.lost-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.lost-card{border:1px solid var(--line);background:white;border-radius:16px;overflow:hidden}
+.lost-photo{height:175px;background:#fff1e3;display:flex;justify-content:center;align-items:center;font-size:65px}
+.lost-photo img{width:100%;height:100%;object-fit:contain}
+.lost-body{padding:16px}
+.lost-body h3{margin:8px 0}
+.lost-body p{margin:8px 0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.lost-tag{display:inline-block;background:#fff1e3;color:#9f5014;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.lost-tag.found{background:#e9f8f0;color:#218357}
+@media(max-width:540px){.lost-grid{grid-template-columns:1fr}.lost-photo{height:210px}}
+
+/* === PATITAS · UI móvil basada en la presentación del proyecto === */
+:root{--orange:#f97811;--orange2:#ffad39;--ink:#142c41;--muted:#74808b;--cream:#fffaf0;--line:#f2e5d3;--shadow:0 12px 26px rgba(132,73,18,.08)}
+body{background:#fffbf3;color:var(--ink)}
+.topbar{background:rgba(255,253,246,.97);border-bottom:1px solid #f2e4cd;box-shadow:0 2px 13px #c98b2410}
+.brand{font-size:27px;letter-spacing:-1.3px}.paw{background:transparent;color:var(--orange);font-size:29px;width:40px;height:40px}
+.btn{border-radius:14px;box-shadow:0 5px 14px #f5822020}.btn.light{background:#fff2e2}
+.header-more{display:none;background:white;border:1px solid #f0dec5;color:var(--ink);width:40px;height:40px;border-radius:14px;font-size:22px}
+.dashboard{background:#fffbf3}.sidebar{background:#fffefa;border-color:#f4e9da}
+.nav button{display:flex;align-items:center;gap:10px;font-size:14px}.nav-icon{display:inline-grid;place-items:center;min-width:25px;font-size:22px;line-height:1.1}.nav-label{min-width:0}
+.nav button.active{color:#f16b05;background:#fff0de}
+.dash-main{max-width:1120px;padding:26px 34px 48px}
+.screen-intro{padding:16px 2px 20px}.screen-intro h2{font-size:clamp(25px,3.8vw,36px);margin:8px 0;color:#172c3e;line-height:1.14}.screen-intro p{margin:0;color:#77838b;font-size:14px}.tiny-kicker{font-weight:900;letter-spacing:1.5px;font-size:11px;color:#eb790d}.hello-paw{font-size:.7em}
+.feature-stack{display:grid;grid-template-columns:1fr;gap:15px;margin-bottom:23px}.feature-banner{position:relative;display:flex;align-items:center;justify-content:space-between;isolation:isolate;overflow:hidden;min-height:190px;border-radius:21px;padding:21px 26px;border:1px solid #f5debd}
+.feature-banner:before{content:'🐾';position:absolute;font-size:100px;opacity:.075;right:15px;top:-30px;transform:rotate(-20deg)}
+.feature-text{max-width:63%;position:relative;z-index:1}.banner-icon{font-size:26px;width:52px;height:52px;display:grid;place-items:center;border-radius:17px;background:#ffffffeb;margin-bottom:10px;box-shadow:0 3px 12px #9c4f1420}.feature-text h2{font-size:clamp(21px,2.6vw,27px);font-weight:900;line-height:1.1;margin:0 0 8px;letter-spacing:-.5px}.feature-text p{font-size:13px;line-height:1.42;margin:0 0 13px;max-width:300px}.banner-link{border-radius:12px;background:#fff;color:#153149;font-weight:800;display:inline-flex;gap:17px;align-items:center;justify-content:space-between;min-height:37px;padding:9px 13px;font-size:12px;box-shadow:0 3px 15px #62290d20}.banner-link span{font-size:15px}
+.banner-art{font-size:clamp(48px,7vw,88px);letter-spacing:-10px;white-space:nowrap;filter:drop-shadow(0 8px 6px #5d2c101c);align-self:center;margin-right:24px;z-index:1}.decor-heart{position:absolute;color:#fada43;font-size:30px;right:-18px;top:-20px;letter-spacing:0;filter:none}
+.banner-orange{background:linear-gradient(110deg,#ff8a0a 0%,#ff9d1c 60%,#ffc445 100%);color:white}.banner-orange .banner-link{color:#e36c00}.banner-gold{background:linear-gradient(110deg,#ffe28c,#ffd04c 55%,#ffebba);color:#293644}.banner-peach{background:linear-gradient(110deg,#fff3e3,#ffe5b8 60%,#ffcf75);color:#283747}
+.home-section-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:25px 0 14px}.home-section-heading h2{margin:5px 0 0;font-size:21px}.text-link{border:0;background:#ffeddb;color:#be641b;border-radius:10px;font-weight:800;padding:10px 13px}
+.home-pet-list{margin-bottom:20px}.pet-card,.panel,.lost-card{border-color:#f1e3d2;box-shadow:0 5px 18px #8c55120d}.pet-card{border-radius:18px}.pet-photo{background:#fff4e6}
+.shortcut-panel{display:grid;gap:9px;margin:18px 0 20px}.shortcut-panel button,.more-routes button{border:1px solid #f2e3d0;border-radius:15px;background:white;padding:16px;text-align:left;color:#173248;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 4px 15px #ae712212}.shortcut-panel span,.more-routes button>span:last-child{font-size:22px;color:#ed881e}.more-routes{display:grid;gap:9px;margin-top:18px}.more-routes button{width:100%}.more-routes button strong{flex:1}.menu-modal{max-width:450px}
+.profile-hero{border-radius:21px;background:linear-gradient(115deg,#ff8811,#ffb52d);color:white;display:flex;align-items:center;gap:14px;padding:20px;margin:0 0 18px;overflow:hidden}.profile-avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#fff7e7;font-size:37px}.profile-hero h2{margin:2px 0;font-size:23px}.profile-hero p{margin:0;font-size:13px}.profile-hero small{font-weight:800;letter-spacing:1px}.profile-hero>span{margin-left:auto;font-size:40px;opacity:.4}
+.welcome{background:#fff9ee;border-radius:18px;padding:18px;border:1px solid #f1e3d0}.welcome h1{font-size:26px}.toolbar input,.toolbar select{background:#fff}
+#homeView .container{max-width:980px}#homeView .hero{background:linear-gradient(120deg,#ffe3bd,#fffaf2)}
+@media(min-width:850px){.feature-stack{grid-template-columns:1fr 1fr}.feature-stack .feature-banner:first-child{grid-column:span 2;min-height:215px}.feature-banner{min-height:200px}.feature-stack .feature-banner:first-child .banner-art{font-size:105px}.home-pet-list{max-width:820px}}
+@media(max-width:850px){.header-more:not(.hidden){display:inline-grid;place-items:center}.dash-main{padding:17px 16px 110px}.sidebar{background:#fffefa}}
+@media(max-width:540px){
+.topbar{height:68px;padding:0 13px}.brand{font-size:23px}.top-actions{gap:6px}.top-actions #headerLogout{padding:9px 12px;font-size:12px}.header-more{width:37px;height:37px;font-size:19px}.paw{font-size:27px;width:35px}
+.sidebar{position:fixed;inset:auto 0 0;z-index:12;border:0;border-top:1px solid #f0e3d0;padding:6px 5px max(8px,env(safe-area-inset-bottom));box-shadow:0 -6px 28px #af81301c;background:#fffefb}
+.nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;overflow:visible}.nav button{flex-direction:column;justify-content:center;gap:3px;padding:8px 0 6px;border-radius:13px;min-width:0;text-align:center;white-space:normal;font-size:10px;min-height:54px}.nav-icon{font-size:23px}.nav-label{line-height:1.15;white-space:normal;word-break:normal;max-width:70px}.nav button.active{background:#fff1e3;color:#f47c0d}.nav button.active:after{content:'';width:5px;height:5px;background:#f47c0d;border-radius:50%}
+.dash-main{padding:12px 14px calc(110px + env(safe-area-inset-bottom))}.screen-intro{padding:14px 4px 17px}.screen-intro h2{font-size:25px}.screen-intro p{font-size:13px}
+.feature-stack{gap:13px}.feature-banner{min-height:170px;border-radius:19px;padding:16px}.feature-text{max-width:66%}.feature-text h2{font-size:20px}.feature-text p{font-size:12px}.banner-icon{width:42px;height:42px;font-size:22px;margin-bottom:8px}.banner-art{font-size:47px;letter-spacing:-8px;margin-right:12px}.decor-heart{font-size:20px;right:-12px}.banner-link{padding:8px 9px;font-size:11px;gap:7px;min-height:34px}
+.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:20px}.pet-list,.lost-grid{grid-template-columns:1fr}.pet-photo{height:185px}.welcome{display:flex;align-items:stretch;flex-direction:column;gap:10px}.welcome h1{font-size:24px}.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%}.toolbar input{flex:unset}.modal-backdrop{padding:10px}.modal{max-height:88dvh;overflow-y:auto}
+}
+/* Ajustes móviles: evita que el encabezado o el menú oculten controles. */
+html{scroll-padding-top:88px}
+.lost-toolbar input,.lost-toolbar select,.toolbar input,.toolbar select{scroll-margin-top:92px}
+.modal-backdrop{z-index:60}
+@media (max-width:540px){
+  .topbar{background:#fffdf6;z-index:25}
+  .dashboard .dash-main{padding-top:22px}
+  .lost-toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:stretch}
+  .lost-toolbar input,.lost-toolbar select{width:100%;max-width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.35;scroll-margin-top:94px}
+  .lost-toolbar input{flex:none}
+  .modal-backdrop{z-index:60}
+  .modal{max-height:calc(100dvh - 30px);overscroll-behavior:contain}
+}
+/* Chat privado de mascotas perdidas */
+.chat-intro{margin-bottom:16px}
+.chat-inbox{display:grid;gap:11px}
+.chat-contact{width:100%;display:flex;align-items:center;gap:13px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:16px;padding:15px;color:var(--ink)}
+.chat-contact:hover{border-color:#f7ae62;background:#fffbf5}
+.chat-contact-icon{width:46px;height:46px;flex:none;border-radius:14px;background:#ffecd5;display:grid;place-items:center;font-size:24px}
+.chat-contact-body{flex:1;min-width:0}.chat-contact-body strong{display:block;font-size:15px}.chat-contact-body small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere;margin-top:4px}
+.chat-shell{border:1px solid var(--line);border-radius:19px;background:white;overflow:hidden}
+.chat-header{padding:15px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.chat-header button{flex:none}.chat-header div{min-width:0}.chat-header strong{display:block;overflow-wrap:anywhere}.chat-header small{color:var(--muted)}
+.chat-messages{height:min(52dvh,460px);min-height:230px;overflow-y:auto;display:flex;flex-direction:column;gap:11px;padding:17px;background:#fffbf5;overscroll-behavior:contain}
+.chat-bubble{padding:11px 13px;border-radius:16px;max-width:85%;background:white;border:1px solid #e9ddce;overflow-wrap:anywhere;align-self:flex-start}
+.chat-bubble.mine{background:#ffe7c7;border-color:#ffd5a2;align-self:flex-end}
+.chat-bubble p{margin:0 0 4px;white-space:pre-wrap;line-height:1.42;font-size:14px}.chat-bubble small{display:block;color:#78838a;text-align:right;font-size:10px}
+.chat-compose{padding:12px;display:flex;gap:9px;align-items:end;border-top:1px solid var(--line)}
+.chat-compose textarea{flex:1;min-width:0;resize:vertical;max-height:110px;min-height:46px;border-radius:12px;padding:11px;border:1px solid #e9ddce;font-size:16px}
+.chat-compose button{min-height:46px}.chat-hint{font-size:12px;color:var(--muted);padding:0 14px 14px;margin:0}
+@media(max-width:540px){.chat-messages{height:48dvh;min-height:230px}.chat-shell{border-radius:16px}.chat-compose{padding:9px}.chat-compose .btn{padding:10px}}
+/* Indicadores de mensajes pendientes */
+.chat-unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:23px;padding:2px 7px;background:#dc3545;color:#fff;font-size:12px;font-weight:900;border-radius:99px;line-height:1}
+.header-more{position:relative}
+.header-more .chat-unread-badge{position:absolute;top:-8px;right:-7px;min-width:19px;height:19px;padding:2px 5px;font-size:10px}
+.more-routes button .chat-unread-badge{font-size:12px;color:#fff;margin-left:auto}
+.chat-contact .chat-unread-badge{flex:none}
+.chat-message-status{font-weight:700}
+/* Solicitudes de cuentas especiales */
+.role-request-panel{margin:18px 0 20px}
+.role-request-panel p{line-height:1.55;color:var(--muted);font-size:14px}
+.role-request-form{display:grid;gap:12px}
+.role-request-status{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;font-weight:800;font-size:13px;background:#fff1df;color:#a95b13}
+.role-request-status.aprobado{background:#e9f8f0;color:#218357}
+.role-request-status.rechazado{background:#fff0ee;color:#bd3737}
+.role-request-panel .btn{width:100%;max-width:320px}
+
+.adoption-delete-btn{background:#fff0ee;color:#b42335;box-shadow:none;border:1px solid #ffd0cc}.adoption-delete-btn:hover{background:#ffe2df;color:#9b1c2e}
+/* Adopciones conectadas a Supabase */
+.adoption-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:15px}
+.adoption-card{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;box-shadow:var(--shadow)}
+.adoption-card-top{background:#fff1df;display:flex;align-items:center;justify-content:center;font-size:65px;min-height:140px}
+.adoption-card-body{padding:17px}.adoption-card-body h3{margin:5px 0 10px}.adoption-card-body p{color:var(--muted);overflow-wrap:anywhere;line-height:1.5;font-size:14px}
+.adoption-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.adoption-actions .btn{flex:1}
+.adoption-status{display:inline-block;border-radius:20px;background:#e8f7ee;color:#218357;font-weight:800;font-size:12px;padding:6px 10px}
+.adoption-status.proceso{background:#fff2df;color:#a65a10}.adoption-status.adoptado{background:#edf0f2;color:#51606b}
+.adoption-request{border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0;background:#fff}
+.adoption-request p{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
+@media(max-width:600px){.adoption-grid{grid-template-columns:1fr}.adoption-actions{flex-direction:column}.adoption-actions .btn{width:100%}}
+/* Fotografías de adopción: tarjetas, galería y administración */
+.adoption-card-top{position:relative;height:190px;overflow:hidden}
+.adoption-card-top img{width:100%;height:100%;object-fit:contain;display:block}
+.adoption-photo-count{position:absolute;bottom:10px;right:10px;background:#203348d9;color:white;border-radius:30px;padding:5px 9px;font-size:12px;font-weight:800}
+.adoption-photo-thumbs{display:flex;gap:7px;overflow-x:auto;padding:9px 12px;border-top:1px solid var(--line)}
+.adoption-photo-thumbs img{width:59px;height:52px;object-fit:cover;border:1px solid var(--line);border-radius:9px;cursor:pointer;flex:none}
+.adoption-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
+.adoption-gallery-item{border:1px solid var(--line);border-radius:11px;padding:7px;min-width:0}
+.adoption-gallery-item img{width:100%;height:105px;object-fit:contain;background:#fff5e8;border-radius:7px}
+.adoption-gallery-item .btn{width:100%;margin-top:5px}
+.adoption-upload-help{font-size:12px;color:var(--muted);line-height:1.5}
+@media(max-width:600px){.adoption-card-top{height:215px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="brand"><div class="paw">🐾</div><span>Patitas<em>.</em></span></div>
+  <div class="top-actions"><span class="pill" id="headerRole">Comunidad Petlover</span><button class="btn small" id="headerLogin" onclick="showLogin()">Ingresar</button><button class="header-more hidden" id="headerMore" onclick="abrirMenuExtra()" aria-label="Más secciones" title="Más secciones">☰<span class="chat-unread-badge hidden" data-unread-count aria-label="Mensajes sin leer"></span></button><button class="btn small hidden" id="headerLogout" onclick="logout()">Salir</button></div>
+</header>
+<main id="homeView">
+  <div class="container">
+    <section class="hero">
+      <div><div class="eyebrow">Una comunidad para quienes aman a los animales</div><h1>Todo por ellos.<br><span style="color:var(--orange)">Unidos por Patitas.</span></h1><p>Conectamos a dueños de mascotas, albergues y negocios pet para construir una comunidad donde cada patita importa.</p><div class="hero-actions"><button class="btn" onclick="showLogin()">Comenzar ahora →</button><button class="btn light" onclick="document.getElementById('roles').scrollIntoView({behavior:'smooth'})">Conocer la app</button></div></div>
+      <div class="hero-art">🐶 🐱<div style="font-size:15px;color:#a86a30;font-weight:800">Adopta · Cuida · Comparte</div></div>
+    </section>
+    <div class="section-head" id="roles"><div><h2>Una app, tres formas de ayudar</h2><p>Selecciona el perfil que mejor representa tu participación.</p></div></div>
+    <section class="grid">
+      <article class="card role-card" onclick="showLogin('owner')"><div class="role-icon">🐕</div><h3>Dueño de mascota</h3><p>Administra el perfil de tus compañeros, descubre adopciones y encuentra productos y servicios.</p><a>Ingresar como dueño →</a></article>
+      <article class="card role-card" onclick="showLogin('shelter')"><div class="role-icon">🏡</div><h3>Albergue</h3><p>Difunde mascotas que buscan hogar, recibe solicitudes y comparte campañas de donación.</p><a>Ingresar como albergue →</a></article>
+      <article class="card role-card" onclick="showLogin('business')"><div class="role-icon">🛍️</div><h3>Negocio PET</h3><p>Publica productos y servicios, muestra promociones y conecta con nuevos clientes.</p><a>Ingresar como negocio →</a></article>
+    </section>
+    <div class="section-head"><div><h2>¿Qué puedes hacer en Patitas?</h2><p>Las herramientas principales de la comunidad.</p></div></div>
+    <section class="grid">
+      <div class="card"><div class="role-icon">❤️</div><h3>Adopciones</h3><p>Conoce mascotas que necesitan una familia y contacta con sus albergues.</p></div>
+      <div class="card"><div class="role-icon">🩺</div><h3>Productos y servicios</h3><p>Encuentra veterinarias, grooming, tiendas y otros servicios para mascotas.</p></div>
+      <div class="card"><div class="role-icon">🤝</div><h3>Comunidad y apoyo</h3><p>Comparte información, campañas, eventos y acciones solidarias.</p></div>
+    </section>
+  </div>
+  <div class="footer">© 2026 Patitas · Propuesta de aplicación para la comunidad petlover</div>
+</main>
+<section id="loginView" class="login-wrap hidden">
+ <div class="login-card">
+  <button class="btn light small" onclick="showHome()">← Volver</button>
+  <div style="text-align:center;margin:18px 0"><div class="paw" style="margin:auto;width:55px;height:55px;font-size:30px">🐾</div><h1>¡Hola, Petlover!</h1><p class="muted">Ingresa para continuar en Patitas.</p></div>
+  <form onsubmit="login(event)">
+<div class="field">
+  <label>Correo electrónico</label>
+  <input id="loginName" type="email"
+         placeholder="ejemplo@correo.com" required>
+</div>
+  <div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" required></div>
+   <div class="field"><label>Tipo de cuenta</label><div class="role-select">
+    <button type="button" class="role-option active" data-role="owner" onclick="chooseRole('owner')">🐕<br>Dueño</button>
+    <button type="button" class="role-option" data-role="shelter" onclick="chooseRole('shelter')">🏡<br>Albergue</button>
+    <button type="button" class="role-option" data-role="business" onclick="chooseRole('business')">🛍️<br>Negocio PET</button>
+   </div></div>
+   <button class="btn" style="width:100%;margin-top:10px">Ingresar a Patitas</button>
+  </form>
+<p class="muted" style="text-align:center;margin-top:18px">
+  ¿Todavía no tienes una cuenta?
+</p>
+<button
+  type="button"
+  class="btn light"
+  style="width:100%"
+  onclick="mostrarRegistro()"
+>
+  Crear cuenta en Patitas
+</button>
+ </div>
+</section>
+  <section id="registerView" class="login-wrap hidden">
+  <div class="login-card">
+    <button class="btn light small" onclick="showLogin()">
+      ← Volver a ingresar
+    </button>
+    <h1>🐾 Crear cuenta</h1>
+    <p class="muted">Únete a la comunidad Patitas.</p>
+    <form onsubmit="registrarUsuario(event)">
+      <div class="field">
+        <label>Nombre completo</label>
+        <input id="registerName" required>
+      </div>
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input id="registerEmail" type="email" required>
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input id="registerPassword"
+               type="password"
+               minlength="6"
+               required>
+      </div>
+      <div class="field">
+        <label>Tipo de cuenta</label>
+        <select id="registerRole">
+          <option value="dueno">Dueño de mascota</option>
+          <option value="albergue">Albergue (requiere aprobación)</option>
+          <option value="negocio">Negocio PET (requiere aprobación)</option>
+        </select>
+      </div>
+
+      <button class="btn" style="width:100%" type="submit">
+        Registrarme
+      </button>
+    </form>
+    <p class="muted" style="font-size:12px;margin-top:15px">
+      Las cuentas de albergues y negocios PET
+      requieren aprobación antes de obtener esos permisos.
+    </p>
+  </div>
+</section>
+<section id="dashboardView" class="dashboard hidden">
+ <aside class="sidebar"><div class="user-mini"><div class="avatar" id="sideAvatar">🐕</div><div><strong id="sideName">Usuario</strong><small id="sideRole">Dueño de mascota</small></div></div><nav class="nav" id="nav"></nav></aside>
+ <div class="dash-main" id="dashContent"></div>
+</section>
+<div id="modalRoot"></div><div id="toastRoot"></div>
+</div>
+<script>
+const roleNames={owner:'Dueño de mascota',shelter:'Albergue',business:'Negocio PET'};
+const roleIcons={owner:'🐕',shelter:'🏡',business:'🛍️'};
+let currentUser=null,currentRole='owner',activePage='inicio';
+let pets = [];
+let usuarioId = null;
+let conversacionActivaId = null;
+let chatPollingId = null;
+let chatRefreshInProgress = false;
+let notificacionesPollingId = null;
+let notificacionesConsultando = false;
+let mensajesNoLeidos = 0;
+let noLeidosPorConversacion = {};
+let publicacionesAdopcion = [];
+let solicitudesAdopcion = [];
+
+async function cargarMascotas() {
+  const { data, error } = await supabaseClient
+    .from('pets')
+    .select("*, pet_photos(image_path, created_at)")  
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Error al cargar mascotas:', error.message);
+    return;
+  }
+  pets = (data || []).map(mascota => ({
+    id: mascota.id,
+    owner_id: mascota.owner_id,
+    name: mascota.name,
+    kind: mascota.species +
+      (mascota.age !== null ? ' · ' + mascota.age + ' años' : ''),
+    place: mascota.location || 'Ubicación no especificada',
+    emoji: mascota.species.toLowerCase() === 'gato' ? '🐱' : '🐶',
+    foto: mascota.pet_photos?.length
+  ? supabaseClient.storage.from('pet-photos')
+      .getPublicUrl(
+        [...mascota.pet_photos]
+          .sort((a, b) =>
+            new Date(b.created_at) - new Date(a.created_at)
+          )[0].image_path
+      ).data.publicUrl
+  : null,
+    status: mascota.status === 'disponible'
+      ? 'Disponible'
+      : mascota.status
+  }));
+  if (currentUser) {
+    renderPage();
+  }
+}
+let products=[
+ {name:'Alimento premium',category:'Alimentos',price:'S/ 85.00',emoji:'🥣'},
+ {name:'Consulta veterinaria',category:'Salud',price:'S/ 50.00',emoji:'🩺'},
+ {name:'Kit de juguetes',category:'Accesorios',price:'S/ 35.00',emoji:'🧸'},
+ {name:'Servicio de grooming',category:'Cuidado',price:'S/ 45.00',emoji:'🛁'}
+];
+let requests=['Solicitud de adopción de Max','Consulta sobre campaña de donación','Nueva consulta de servicio'];
+function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover'}
+function showLogin(role='owner'){hideViews();document.getElementById('loginView').classList.remove('hidden');chooseRole(role)}
+function hideViews(){
+  ['homeView','loginView','registerView','dashboardView']
+    .forEach(id=>document.getElementById(id).classList.add('hidden'));
+}
+function mostrarRegistro(){
+  hideViews();
+  document.getElementById('registerView').classList.remove('hidden');
+}
+async function registrarUsuario(event) {
+  event.preventDefault();
+  const nombre = document.getElementById('registerName').value.trim();
+  const correo = document.getElementById('registerEmail').value.trim();
+  const contrasena = document.getElementById('registerPassword').value;
+  const tipo = document.getElementById('registerRole').value;
+  if (!nombre || !correo || contrasena.length < 6) {
+    alert('Completa todos los datos correctamente.');
+    return;
+  }
+  const boton = event.submitter;
+  if (boton) boton.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: correo,
+      password: contrasena,
+      options: {
+        data: {
+          full_name: nombre
+        }
+      }
+    });
+    if (error) throw error;
+    if (!data.user) {
+      alert('No se pudo completar el registro.');
+      return;
+    }
+    if (tipo !== 'dueno') {
+      alert(
+        'Tu cuenta se ha creado como dueño de mascota. ' +
+        'Después de confirmar tu correo e iniciar sesión, ' +
+        'podrás enviar tu solicitud para ser albergue o negocio PET.'
+      );
+    } else {
+      alert('Registro recibido. Revisa tu correo para confirmar tu cuenta.');
+    }
+    showLogin();
+  } catch (error) {
+    alert('Error al registrarse: ' + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
+function chooseRole(role){currentRole=role;document.querySelectorAll('.role-option').forEach(b=>b.classList.toggle('active',b.dataset.role===role))}
+async function login(e) {
+  e.preventDefault();
+  const correo = document.getElementById('loginName').value.trim();
+  const contrasena = document.getElementById('loginPassword').value;
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: correo,
+      password: contrasena
+    });
+    if (error) throw error;
+    const { data: perfil, error: perfilError } = await supabaseClient
+      .from('profiles')
+      .select('full_name, user_type')
+      .eq('id', data.user.id)
+      .single();
+    if (perfilError || !perfil) {
+      await supabaseClient.auth.signOut();
+      throw new Error('No se pudo obtener tu perfil.');
+    }
+    const tipos = {
+      dueno: 'owner',
+      albergue: 'shelter',
+      negocio: 'business'
+    };
+    currentUser = perfil.full_name || correo;
+    usuarioId = data.user.id;
+    currentRole = tipos[perfil.user_type] || 'owner';
+    hideViews();
+    document.getElementById('dashboardView').classList.remove('hidden');
+    document.getElementById('headerLogin').classList.add('hidden');
+    document.getElementById('headerLogout').classList.remove('hidden');
+    document.getElementById('headerMore').classList.remove('hidden');
+    document.getElementById('headerRole').textContent = roleNames[currentRole];
+    document.getElementById('sideName').textContent = currentUser;
+    document.getElementById('sideRole').textContent = roleNames[currentRole];
+    document.getElementById('sideAvatar').textContent = roleIcons[currentRole];
+    conversacionActivaId = null;
+    activePage = 'inicio';
+    renderNav();
+    renderPage();
+    await cargarMascotas();
+    iniciarNotificacionesChat();
+  } catch (error) {
+    alert('No se pudo iniciar sesión: ' + error.message);
+  }
+}
+async function logout() {
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    alert('No se pudo cerrar sesión: ' + error.message);
+    return;
+  }
+currentUser = null;
+usuarioId = null;
+conversacionActivaId = null;
+if (chatPollingId) { clearInterval(chatPollingId); chatPollingId = null; }
+if (notificacionesPollingId) { clearInterval(notificacionesPollingId); notificacionesPollingId = null; }
+mensajesNoLeidos = 0;
+noLeidosPorConversacion = {};
+actualizarIndicadoresChat();
+pets = [];
+currentRole = 'owner';
+  showHome();
+  toast('Sesión cerrada correctamente');
+}
+function opcionesPatitas() {
+  if (currentRole === 'shelter') return [
+    {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
+    {texto:'Rescatados',pagina:'Rescatados',icono:'🐾'},
+    {texto:'Solicitudes',pagina:'Solicitudes',icono:'✉'},
+    {texto:'Eventos',pagina:'Campañas',icono:'▣'},
+    {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
+  ];
+  if (currentRole === 'business') return [
+    {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
+    {texto:'Reporte',pagina:'Mi negocio',icono:'▥'},
+    {texto:'Productos',pagina:'Productos y servicios',icono:'▣'},
+    {texto:'Pedidos',pagina:'Solicitudes',icono:'☷'},
+    {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
+  ];
+  return [
+    {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
+    {texto:'Adoptar',pagina:'Adopciones',icono:'♡'},
+    {texto:'Productos',pagina:'Servicios y productos',icono:'▣'},
+    {texto:'Mis mascotas',pagina:'Mis mascotas',icono:'🐾'},
+    {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
+  ];
+}
+function renderNav() {
+  document.getElementById('nav').innerHTML=opcionesPatitas().map(op=>
+    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}"><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span></button>`
+  ).join('');
+}
+function abrirMenuExtra(){
+  const rutas=currentRole==='owner'
+    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
+    : currentRole==='shelter'
+      ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['✦','Comunidad','Comunidad']]
+      : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🎁','Promociones','Promociones']];
+  document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong>${pagina==='Mensajes'?'<span class="chat-unread-badge hidden" data-unread-count></span>':''}<span>›</span></button>`).join('')}</div></div></div>`;
+  actualizarIndicadoresChat();
+}
+function portadaPatitas() {
+  const mias=pets.filter(p=>p.owner_id===usuarioId);
+  const acceso=(cls,icono,titulo,subtexto,boton,destino,figura)=>`<article class="feature-banner ${cls}">
+    <div class="feature-text"><div class="banner-icon">${icono}</div><h2>${titulo}</h2><p>${subtexto}</p><button type="button" class="banner-link" onclick="navigate('${destino}')">${boton}<span aria-hidden="true">➜</span></button></div>
+    <div class="banner-art" aria-hidden="true">${figura}<span class="decor-heart">♥</span></div>
+  </article>`;
+  if(currentRole==='shelter')return `<section class="screen-intro"><span class="tiny-kicker">UNIDOS POR SU BIENESTAR</span><h2>¡Bienvenido a tu albergue!</h2><p>Conecta animales rescatados con familias que quieren ayudar.</p></section><div class="feature-stack">
+   ${acceso('banner-orange','🐾','Mis rescatados','Gestiona los animales que esperan un hogar.','Ver rescatados','Rescatados','🐶 🐱')}
+   ${acceso('banner-gold','🎁','Donaciones','Recibe apoyo para los animales de tu refugio.','Ver donaciones','Donaciones','🥣 🦴')}
+   ${acceso('banner-peach','📅','Eventos','Comparte campañas y actividades de tu albergue.','Ver eventos','Campañas','🐕 🎈')}
+   </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Mis solicitudes')">📩 Mis solicitudes de adopción <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Solicitudes')">📩 Consultar solicitudes <span>›</span></button></div>`;
+  if(currentRole==='business')return `<section class="screen-intro"><span class="tiny-kicker">TU NEGOCIO TAMBIÉN AYUDA</span><h2>Pet Negocio</h2><p>Administra tu catálogo y conecta con la comunidad.</p></section><div class="feature-stack">
+    ${acceso('banner-orange','📈','Reporte estadístico','Consulta el movimiento de tu negocio.','Ver reporte','Mi negocio','📊 🐶')}
+    ${acceso('banner-gold','🛍️','Productos y servicios','Mantén actualizado tu catálogo de productos.','Ver catálogo','Productos y servicios','🥣 🧸')}
+    ${acceso('banner-peach','📩','Pedidos de clientes','Revisa el interés de nuevos clientes.','Ver pedidos','Solicitudes','🐱 📋')}
+    </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button></div>`;
+  return `<section class="screen-intro"><span class="tiny-kicker">TODO PARA EL BIENESTAR DE TU MASCOTA</span><h2>¡Hola, ${escapeHtml(currentUser || 'Petlover')}! <span class="hello-paw">🐾</span></h2><p>Encuentra, adopta, cuida y sé parte del cambio.</p></section>
+  <div class="feature-stack">
+    ${acceso('banner-orange','🐾','Albergues y adopciones','Encuentra un hogar para una mascota.','Buscar mascotas','Adopciones','🐶 🐱')}
+    ${acceso('banner-gold','🏪','Negocios PET','Veterinarias, tiendas y servicios para tu mascota.','Explorar productos','Servicios y productos','🩺 🐕')}
+    ${acceso('banner-peach','🐕','Mis mascotas','Gestiona sus perfiles y fotografías.','Ver mis mascotas','Mis mascotas','🐱 🐶')}
+  </div>
+  <div class="home-section-heading"><div><span class="tiny-kicker">TU COMUNIDAD</span><h2>Tus compañeros</h2></div><button type="button" class="text-link" onclick="navigate('Mis mascotas')">Ver todas ›</button></div>
+  <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button></div>`;
+}
+function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
+function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
+let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':(activePage.includes('producto')?'<button class="btn" onclick="openCreate()">＋ Agregar producto</button>':'')}</div>`;
+if(activePage==='inicio'){
+ html+=portadaPatitas();
+}else if(activePage==='perdidas'){
+   html += vistaAvisos();
+ }else if(activePage==='mensajes'){
+   html += vistaMensajes();
+}else if(activePage==='adopciones' || activePage==='rescatados' || activePage==='mis solicitudes' || (activePage==='solicitudes' && currentRole==='shelter')){
+ html+=vistaAdopciones();
+}else if(activePage.includes('mascota')){
+  let list = activePage === 'mis mascotas'
+    ? pets.filter(p => p.owner_id === usuarioId)
+    : pets;
+  html += `
+    <div class="toolbar">
+      <input id="petSearch"
+        placeholder="Buscar por nombre o ubicación..."
+        oninput="filterPets()">
+      <select id="petFilter" onchange="filterPets()">
+        <option value="">Todas las mascotas</option>
+        <option value="Perro">Perro</option>
+        <option value="Gato">Gato</option>
+      </select>
+    </div>
+    <div class="pet-list" id="petResults">
+      ${list.length
+        ? list.map(p => petTile(
+            p.emoji,
+            p.name,
+            p.kind + ' · ' + p.place,
+            p.status,
+            true,
+            p.foto,
+            p.id,
+            p.owner_id
+          )).join('')
+        : '<div class="empty">No hay mascotas para mostrar.</div>'
+      }
+    </div>
+  `;
+}else if(activePage.includes('producto')||activePage.includes('servicio')||activePage.includes('promocion')){
+ html+=`<div class="toolbar"><input id="productSearch" placeholder="Buscar productos o servicios..." oninput="filterProducts()"><select><option>Todas las categorías</option><option>Alimentos</option><option>Salud</option><option>Accesorios</option></select></div><div class="panel" id="productResults">${products.map(productRow).join('')}</div>`;
+}else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')){
+ html+=`<div class="panel"><div class="panel-head"><h2>${currentRole==='shelter'?'Solicitudes y apoyo':'Solicitudes recibidas'}</h2><span class="tag">${requests.length} pendientes</span></div>${requests.map((r,i)=>`<div class="product-row"><div class="product-left"><div class="product-emoji">${i===0?'🐾':'💌'}</div><div><strong>${r}</strong><small>Recibida recientemente · Pendiente de revisión</small></div></div><button class="btn light small" onclick="toast('Solicitud marcada para revisión')">Revisar</button></div>`).join('')}</div>`;
+}else if(activePage==='mi negocio'){
+ html+=`<div class="panel"><h2>📊 Reporte de negocio</h2><p class="muted">El panel estadístico detallado se implementará en una próxima etapa. Tu catálogo y solicitudes siguen disponibles desde el menú inferior.</p><button class="btn" onclick="navigate('Productos y servicios')">Ir a mis productos</button></div>`;
+}else if(activePage.includes('perfil')||activePage.includes('negocio')){
+ html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div id="roleRequestArea" class="panel role-request-panel" aria-live="polite"><h2>🏡 Cuenta especial</h2><p>Consultando tu solicitud...</p></div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
+}else{
+ html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
+}
+root.innerHTML=html;actualizarIndicadoresChat();if(activePage==='mi perfil')cargarSolicitudRol();}
+
+
+// Adopciones: datos reales desde adoption_posts y adoption_requests.
+function etiquetaEstadoAdopcion(estado){return ({disponible:'Disponible',en_proceso:'En proceso',adoptado:'Adoptado'})[estado]||estado;}
+function etiquetaEstadoSolicitud(estado){return ({pendiente:'Pendiente',aprobada:'Aprobada',rechazada:'Rechazada'})[estado]||estado;}
+function vistaAdopciones(){
+  if(activePage==='mis solicitudes') return `<div class="panel"><h2>📩 Mis solicitudes de adopción</h2><p class="muted">Consulta aquí el estado de tus solicitudes.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
+  if(activePage==='solicitudes') return `<div class="panel"><h2>📩 Solicitudes recibidas</h2><p class="muted">Revisa las solicitudes de adopción de tus publicaciones.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
+  if(activePage==='rescatados') return `<div class="panel"><div class="panel-head"><h2>🐾 Mis rescatados en adopción</h2><button class="btn small" onclick="abrirPublicacionAdopcion()">＋ Publicar mascota</button></div><p class="muted">Publicaciones de adopción creadas por tu albergue.</p></div><div id="adoptionResults" class="empty">Cargando publicaciones...</div>`;
+  return `<div class="panel"><div class="panel-head"><h2>❤️ Mascotas en adopción</h2><button class="btn light small" onclick="navigate('Mis solicitudes')">Mis solicitudes</button></div><p class="muted">Conoce a los animales que buscan una familia. Las solicitudes se envían directamente al albergue.</p></div><div id="adoptionResults" class="empty">Cargando mascotas...</div>`;
+}
+// La tabla adoption_photos guarda rutas; las imágenes permanecen en Storage.
+function urlFotoAdopcion(ruta){
+ return supabaseClient.storage.from('pet-photos').getPublicUrl(ruta).data.publicUrl;
+}
+function fotosDeAdopcion(post){
+ return [...(post.adoption_photos||[])].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+}
+function vistaGaleriaAdopcion(post){
+ const fotos=fotosDeAdopcion(post);
+ if(!fotos.length)return `<div class="adoption-card-top">${post.species?.toLowerCase()==='gato'?'🐱':'🐶'}</div>`;
+ const src=urlFotoAdopcion(fotos[0].image_path);
+ return `<div class="adoption-card-top"><img id="adoptionMain_${escapeAttr(post.id)}" src="${escapeAttr(src)}" alt="Foto de ${escapeAttr(post.name)}" onerror="this.style.display='none'">${fotos.length>1?`<span class="adoption-photo-count">📷 ${fotos.length}</span>`:''}</div>${fotos.length>1?`<div class="adoption-photo-thumbs">${fotos.map((f,i)=>`<img src="${escapeAttr(urlFotoAdopcion(f.image_path))}" alt="Ver foto ${i+1} de ${escapeAttr(post.name)}" onclick="document.getElementById('adoptionMain_${escapeAttr(post.id)}').src=this.src">`).join('')}</div>`:''}`;
+}
+async function cargarAdopciones(){
+ const destino=document.getElementById('adoptionResults');
+ const pagina=activePage,idUsuario=usuarioId;
+ if(!destino||!idUsuario)return;
+ try{
+  if(pagina==='adopciones'||pagina==='rescatados'){
+   let consulta=supabaseClient.from('adoption_posts').select('*, adoption_photos(id,image_path,created_at)').order('created_at',{ascending:false});
+   if(pagina==='rescatados')consulta=consulta.eq('shelter_id',idUsuario);
+   const {data,error}=await consulta;if(error)throw error;
+   if(activePage!==pagina||usuarioId!==idUsuario)return;
+   publicacionesAdopcion=data||[];
+   destino.className='adoption-grid';
+   destino.innerHTML=publicacionesAdopcion.length?publicacionesAdopcion.map(tarjetaAdopcion).join(''):'<div class="panel empty">Aún no hay publicaciones de adopción.</div>';
+  }else{
+   const {data,error}=await supabaseClient.from('adoption_requests').select('id,adoption_id,applicant_id,message,status,created_at').order('created_at',{ascending:false});
+   if(error)throw error;
+   if(activePage!==pagina||usuarioId!==idUsuario)return;
+   solicitudesAdopcion=data||[];
+   const ids=[...new Set(solicitudesAdopcion.map(x=>x.adoption_id))];
+   let titulos={};
+   if(ids.length){const r=await supabaseClient.from('adoption_posts').select('id,name,shelter_id').in('id',ids);if(r.error)throw r.error;titulos=Object.fromEntries((r.data||[]).map(p=>[p.id,p]));}
+   const visibles=solicitudesAdopcion.filter(x=>pagina==='mis solicitudes'?x.applicant_id===idUsuario:titulos[x.adoption_id]?.shelter_id===idUsuario);
+   destino.className='';
+   destino.innerHTML=visibles.length?visibles.map(x=>tarjetaSolicitudAdopcion(x,titulos[x.adoption_id],pagina==='solicitudes')).join(''):'<p class="empty">Todavía no hay solicitudes para mostrar.</p>';
+  }
+ }catch(error){console.error('Error de adopciones:',error);if(document.getElementById('adoptionResults')===destino)destino.innerHTML='<p class="muted">No fue posible cargar las adopciones: '+escapeHtml(error.message)+'</p><button class="btn light small" onclick="cargarAdopciones()">Reintentar</button>';}
+}
+function tarjetaAdopcion(p){
+ const propia=usuarioId===p.shelter_id;
+ const estado=etiquetaEstadoAdopcion(p.status);
+ const estClase=p.status==='adoptado'?' adoptado':p.status==='en_proceso'?' proceso':'';
+ return `<article class="adoption-card">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span><h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button><button class="btn small adoption-delete-btn" onclick="eliminarPublicacionAdopcion('${escapeAttr(p.id)}')">🗑️ Eliminar publicación</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
+}
+function galeriaEditableAdopcion(p){
+ const fotos=fotosDeAdopcion(p);
+ return `<div class="field"><label>Fotografías actuales (${fotos.length})</label><div id="adoptPhotosExisting" class="adoption-gallery">${fotos.length?fotos.map(f=>`<div class="adoption-gallery-item"><img src="${escapeAttr(urlFotoAdopcion(f.image_path))}" alt="Fotografía de ${escapeAttr(p.name)}"><button class="btn light small" type="button" onclick="eliminarFotoAdopcion('${escapeAttr(p.id)}','${escapeAttr(f.id)}')">🗑️ Eliminar foto</button></div>`).join(''):'<p class="muted">Esta publicación todavía no tiene fotografías.</p>'}</div></div>`;
+}
+function abrirPublicacionAdopcion(id=null){
+ if(currentRole!=='shelter'||!usuarioId){alert('Solo un albergue autorizado puede publicar mascotas.');return;}
+ const p=id?publicacionesAdopcion.find(x=>x.id===id&&x.shelter_id===usuarioId):null;
+ if(id&&!p){alert('Publicación no encontrada.');return;}
+ const campo=(nombre,clave,tipo='text',obligatorio=false)=>`<div class="field"><label for="adopt_${clave}">${nombre}</label><input id="adopt_${clave}" type="${tipo}" value="${escapeAttr(p?.[clave]??'')}" ${obligatorio?'required':''}></div>`;
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>${p?'Editar':'Publicar'} mascota en adopción</h2><button class="close" onclick="closeModal()">✕</button></div><form onsubmit="guardarPublicacionAdopcion(event,${id?`'${escapeAttr(id)}'`:'null'})">${campo('Nombre','name','text',true)}<div class="field"><label>Especie</label><select id="adopt_species"><option value="Perro" ${p?.species==='Perro'?'selected':''}>Perro</option><option value="Gato" ${p?.species==='Gato'?'selected':''}>Gato</option><option value="Otro" ${p?.species==='Otro'?'selected':''}>Otro</option></select></div>${campo('Raza (opcional)','breed')}${campo('Edad en años (opcional)','age','number')}${campo('Sexo (opcional)','sex')}${campo('Ubicación','location','text',true)}<div class="field"><label>Descripción</label><textarea id="adopt_description" maxlength="2000">${escapeHtml(p?.description??'')}</textarea></div>${p?`<div class="field"><label>Estado</label><select id="adopt_status">${[['disponible','Disponible'],['en_proceso','En proceso'],['adoptado','Adoptado']].map(([v,n])=>`<option value="${v}" ${p.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`:''}${p?galeriaEditableAdopcion(p):''}<div class="field"><label for="adopt_photos">${p?'Agregar nuevas fotografías':'Fotografías de la mascota (opcional)'}</label><input type="file" id="adopt_photos" accept="image/jpeg,image/png,image/webp" multiple><small class="adoption-upload-help">Hasta 5 imágenes por operación, JPG/PNG/WEBP, máximo 5 MB cada una. Las fotografías aparecerán en Rescatados y Adoptar.</small></div><button type="submit" class="btn" style="width:100%">${p?'Guardar cambios':'Publicar mascota'}</button></form></div></div>`;
+}
+function validarFotosAdopcion(files){
+ const fotos=[...files];
+ if(fotos.length>5)throw Error('Selecciona como máximo 5 fotografías por vez.');
+ for(const foto of fotos){
+  if(!['image/jpeg','image/png','image/webp'].includes(foto.type))throw Error('Solo se aceptan imágenes JPG, PNG o WEBP.');
+  if(foto.size>5*1024*1024)throw Error('Cada fotografía debe pesar 5 MB o menos.');
+ }
+ return fotos;
+}
+async function subirFotosAdopcion(id,fotos,idAlbergue){
+ let subidas=0;
+ for(const foto of fotos){
+  const ext=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[foto.type];
+  const identificador=crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2);
+  const ruta=`${idAlbergue}/adopciones/${id}/${identificador}.${ext}`;
+  const {error:errorSubida}=await supabaseClient.storage.from('pet-photos').upload(ruta,foto,{contentType:foto.type,upsert:false});
+  if(errorSubida)throw Error(`Se subieron ${subidas} foto(s), pero otra falló: ${errorSubida.message}`);
+  const {error:errorRegistro}=await supabaseClient.from('adoption_photos').insert({adoption_id:id,image_path:ruta});
+  if(errorRegistro){
+   const {error:limpiezaError}=await supabaseClient.storage.from('pet-photos').remove([ruta]);
+   if(limpiezaError)console.error('Archivo pendiente de limpieza:',ruta,limpiezaError);
+   throw Error(`Se subieron ${subidas} foto(s), pero no se pudo vincular otra: ${errorRegistro.message}`);
+  }
+  subidas++;
+ }
+ return subidas;
+}
+async function guardarPublicacionAdopcion(event,id){
+ event.preventDefault();const boton=event.submitter;if(boton)boton.disabled=true;
+ let guardada=false;
+ try{
+  if(currentRole!=='shelter'||!usuarioId)throw Error('Debes iniciar sesión como albergue.');
+  const valor=k=>document.getElementById('adopt_'+k).value.trim();
+  const fotos=validarFotosAdopcion(document.getElementById('adopt_photos')?.files||[]);
+  const edad=valor('age');const cambios={name:valor('name'),species:valor('species'),breed:valor('breed')||null,age:edad===''?null:Number(edad),sex:valor('sex')||null,location:valor('location'),description:valor('description')||null};
+  if(!cambios.name||!cambios.location||cambios.name.length>100||(cambios.age!==null&&(!Number.isInteger(cambios.age)||cambios.age<0||cambios.age>50)))throw Error('Comprueba el nombre, la ubicación y la edad (0 a 50).');
+  let idPost=id;
+  if(id){const {data,error}=await supabaseClient.from('adoption_posts').update({...cambios,status:valor('status')}).eq('id',id).eq('shelter_id',usuarioId).select('id');if(error)throw error;if(!data?.length)throw Error('No tienes permiso para editar esta publicación.');}
+  else{const {data,error}=await supabaseClient.from('adoption_posts').insert({...cambios,shelter_id:usuarioId}).select('id').single();if(error)throw error;idPost=data.id;}
+  guardada=true;
+  if(fotos.length)await subirFotosAdopcion(idPost,fotos,usuarioId);
+  closeModal();toast(id?'Publicación actualizada':'Mascota publicada en adopción');await cargarAdopciones();
+ }catch(error){
+  console.error('Error al guardar adopción:',error);
+  if(guardada){closeModal();await cargarAdopciones();alert('La publicación se guardó, pero hubo un problema con algunas fotografías: '+error.message+'\nPuedes abrir Editar para volver a subir las que falten.');}
+  else alert('No se pudo guardar la publicación: '+error.message);
+ }finally{if(boton)boton.disabled=false;}
+}
+async function eliminarFotoAdopcion(idPost,idFoto){
+ if(currentRole!=='shelter'||!usuarioId)return;
+ if(!confirm('¿Eliminar esta fotografía de la publicación?'))return;
+ try{
+  const post=publicacionesAdopcion.find(p=>p.id===idPost&&p.shelter_id===usuarioId);
+  const foto=post?.adoption_photos?.find(f=>f.id===idFoto);
+  if(!foto)throw Error('No se encontró la fotografía.');
+  const ruta=foto.image_path;
+  if(!ruta.startsWith(`${usuarioId}/adopciones/${idPost}/`))throw Error('La ruta de la fotografía no corresponde a esta publicación.');
+  const {data,error}=await supabaseClient.from('adoption_photos').delete().eq('id',idFoto).eq('adoption_id',idPost).select('id');
+  if(error)throw error;if(!data?.length)throw Error('No se pudo eliminar la referencia de la fotografía.');
+  const {error:errorArchivo}=await supabaseClient.storage.from('pet-photos').remove([ruta]);
+  await cargarAdopciones();
+  const actualizado=publicacionesAdopcion.find(p=>p.id===idPost);
+  if(actualizado)abrirPublicacionAdopcion(idPost);
+  if(errorArchivo)alert('Se retiró la fotografía de la publicación, pero su archivo puede seguir en Storage. Revisa la consola o solicita una limpieza: '+errorArchivo.message);
+  else toast('Fotografía eliminada');
+ }catch(error){alert('No se pudo eliminar la fotografía: '+error.message);}
+}
+// Eliminar la publicación (y, por cascada, sus solicitudes y referencias fotográficas).
+// Storage es un sistema separado de Postgres; se limpia después y se informa de fallos.
+async function eliminarPublicacionAdopcion(id){
+ if(currentRole!=='shelter'||!usuarioId)return;
+ const post=publicacionesAdopcion.find(p=>p.id===id&&p.shelter_id===usuarioId);
+ if(!post){alert('No se encontró una publicación propia para eliminar.');return;}
+ const advertencia=`Vas a eliminar definitivamente la publicación de ${post.name}.\n\n`+
+  'También se borrarán todas sus solicitudes de adopción (incluso las aprobadas) y las referencias de sus fotografías.\n'+
+  'Las imágenes del almacenamiento se intentarán eliminar. Esta acción no se puede deshacer.\n\n'+
+  'Para continuar, escribe ELIMINAR:';
+ const respuesta=prompt(advertencia);
+ if(respuesta===null){toast('Eliminación cancelada. La publicación se conserva.');return;}
+ if(respuesta!=='ELIMINAR'){
+  alert('No se eliminó la publicación. Debes escribir exactamente ELIMINAR en mayúsculas para confirmar.');
+  return;
+ }
+ const confirmacionFinal=confirm(
+  `ÚLTIMA CONFIRMACIÓN\n\n¿Eliminar PERMANENTEMENTE la publicación de ${post.name}?\n\n`+
+  'También se borrará su historial de solicitudes y se intentarán eliminar sus fotografías.\n\n'+
+  'Pulsa Aceptar para ELIMINAR DEFINITIVAMENTE o Cancelar para conservarla.'
+ );
+ if(!confirmacionFinal){toast('Eliminación cancelada. La publicación se conserva.');return;}
+ const boton=document.querySelector('.adoption-delete-btn[onclick*="'+id+'"]');
+ if(boton)boton.disabled=true;
+ try{
+  // Comprobar el propietario en Supabase; no confiar solo en el botón visible.
+  const {data:actual,error:consultaError}=await supabaseClient.from('adoption_posts')
+   .select('id,name,shelter_id,adoption_photos(image_path)')
+   .eq('id',id).eq('shelter_id',usuarioId).single();
+  if(consultaError||!actual)throw Error('No se pudo verificar la publicación o ya fue eliminada.');
+  const rutas=(actual.adoption_photos||[]).map(f=>f.image_path)
+   .filter(r=>typeof r==='string'&&r.startsWith(`${usuarioId}/adopciones/${id}/`));
+  const rutasOmitidas=(actual.adoption_photos||[]).length-rutas.length;
+  const {data:eliminadas,error:errorBorrado}=await supabaseClient.from('adoption_posts')
+   .delete().eq('id',id).eq('shelter_id',usuarioId).select('id');
+  if(errorBorrado)throw errorBorrado;
+  if(!eliminadas?.length)throw Error('No se eliminó la publicación. Comprueba los permisos.');
+  let pendientes=rutasOmitidas;
+  // Borrar archivos después de confirmar la eliminación de la publicación.
+  if(rutas.length){
+   const {data:eliminados,error:errorStorage}=await supabaseClient.storage.from('pet-photos').remove(rutas);
+   if(errorStorage){console.error('Limpieza pendiente de fotografías de adopción:',rutas,errorStorage);pendientes+=rutas.length;}
+   else if(Array.isArray(eliminados)){
+    const borrados=new Set(eliminados.map(x=>x.name));
+    const noConfirmados=rutas.filter(r=>!borrados.has(r));
+    // Algunas versiones de Storage devuelven nombres relativos o datos distintos;
+    // comprobar el resultado sin asumir que implica necesariamente un fallo.
+    if(noConfirmados.length)console.info('Verifica en Storage si todos los archivos fueron retirados:',noConfirmados);
+   }
+  }
+  await cargarAdopciones();
+  if(pendientes)alert(`Publicación eliminada, pero ${pendientes} archivo(s) podrían permanecer en Storage. Revisa el bucket pet-photos antes de limpiar manualmente.`);
+  else toast('Publicación eliminada correctamente');
+ }catch(error){console.error('Error al eliminar publicación:',error);alert('No se pudo eliminar la publicación: '+error.message);}
+ finally{if(boton)boton.disabled=false;}
+}
+function abrirSolicitudAdopcion(id){
+ const p=publicacionesAdopcion.find(x=>x.id===id);
+ if(!p||p.status!=='disponible'||p.shelter_id===usuarioId)return;
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>Solicitar adopción</h2><button class="close" onclick="closeModal()">✕</button></div><p>Estás solicitando adoptar a <strong>${escapeHtml(p.name)}</strong>.</p><form onsubmit="enviarSolicitudAdopcion(event,'${escapeAttr(id)}')"><div class="field"><label for="adoptionMessage">Cuéntale al albergue por qué deseas adoptar (opcional)</label><textarea id="adoptionMessage" rows="4" maxlength="2000"></textarea></div><button class="btn" type="submit" style="width:100%">Enviar solicitud</button></form></div></div>`;
+}
+async function enviarSolicitudAdopcion(event,id){
+ event.preventDefault();if(!usuarioId)return;
+ const boton=event.submitter;if(boton)boton.disabled=true;
+ try{
+  const {error}=await supabaseClient.from('adoption_requests').insert({adoption_id:id,applicant_id:usuarioId,message:document.getElementById('adoptionMessage').value.trim()||null});
+  if(error){if(error.code==='23505')throw Error('Ya enviaste una solicitud para esta mascota.');throw error;}
+  closeModal();toast('¡Solicitud enviada al albergue!');
+ }catch(error){alert('No se pudo enviar la solicitud: '+error.message);}finally{if(boton)boton.disabled=false;}
+}
+function tarjetaSolicitudAdopcion(r,p,esAlbergue){
+ return `<article class="adoption-request"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}</article>`;
+}
+async function evaluarSolicitudAdopcion(id,estado){
+ if(currentRole!=='shelter'||!['aprobada','rechazada'].includes(estado))return;
+ if(!confirm('¿Seguro que deseas '+(estado==='aprobada'?'aprobar':'rechazar')+' esta solicitud?'))return;
+ try{
+  const {data,error}=await supabaseClient.from('adoption_requests').update({status:estado}).eq('id',id).eq('status','pendiente').select('id');
+  if(error)throw error;if(!data?.length)throw Error('La solicitud ya fue procesada o no tienes permiso.');
+  toast('Solicitud '+(estado==='aprobada'?'aprobada':'rechazada'));await cargarAdopciones();
+ }catch(error){alert('No se pudo actualizar la solicitud: '+error.message);}
+}
+
+// Solicitud de rol: una solicitud por usuario, revisada por un administrador.
+async function cargarSolicitudRol() {
+  const area = document.getElementById('roleRequestArea');
+  const idConsultado = usuarioId;
+  if (!area || !idConsultado || activePage !== 'mi perfil') return;
+  if (currentRole !== 'owner') {
+    area.innerHTML = `<h2>🏡 Cuenta especial</h2><p>Tu cuenta está habilitada como <strong>${escapeHtml(roleNames[currentRole])}</strong>.</p>`;
+    return;
+  }
+  area.innerHTML = '<h2>🏡 Solicitar cuenta especial</h2><p>Consultando el estado de tu solicitud...</p>';
+  try {
+    const {data,error} = await supabaseClient.from('role_requests')
+      .select('id,requested_role,status,created_at')
+      .eq('user_id',idConsultado).maybeSingle();
+    if (error) throw error;
+    if (usuarioId !== idConsultado || activePage !== 'mi perfil' ||
+        document.getElementById('roleRequestArea') !== area) return;
+    if (data) {
+      const nombreRol = data.requested_role === 'albergue' ? 'Albergue' : 'Negocio PET';
+      const estados = {pendiente:'Pendiente de revisión',aprobado:'Aprobada',rechazado:'Rechazada'};
+      const estado = estados[data.status] || 'En revisión';
+      const clase = ['aprobado','rechazado'].includes(data.status) ? data.status : '';
+      area.innerHTML = `<h2>🏡 Solicitud de cuenta especial</h2>
+        <p>Tipo solicitado: <strong>${nombreRol}</strong></p>
+        <span class="role-request-status ${clase}">${estado}</span>
+        <p>Solo un administrador autorizado puede aprobar o rechazar la solicitud.
+        ${data.status === 'aprobado' ? 'Si tu cuenta ya fue aprobada, vuelve a iniciar sesión para actualizar el perfil.' : ''}</p>`;
+    } else {
+      area.innerHTML = `<h2>🏡 Solicitar cuenta especial</h2>
+        <p>¿Representas a un albergue o negocio PET? Envía una solicitud para revisión. Mientras tanto, conservarás tu cuenta de dueño de mascota.</p>
+        <form class="role-request-form" onsubmit="enviarSolicitudRol(event)">
+          <div class="field"><label for="requestedRole">Tipo de cuenta que deseas solicitar</label>
+          <select id="requestedRole" required>
+            <option value="albergue">🏡 Albergue</option>
+            <option value="negocio">🛍️ Negocio PET</option>
+          </select></div>
+          <button class="btn" type="submit">Enviar solicitud</button>
+        </form><p style="font-size:12px">Solo puedes tener una solicitud registrada por cuenta.</p>`;
+    }
+  } catch (error) {
+    console.error('Error al consultar solicitud de rol:',error);
+    if (document.getElementById('roleRequestArea') === area) {
+      area.innerHTML = `<h2>🏡 Cuenta especial</h2><p>No se pudo consultar la solicitud.</p>
+      <button class="btn light" type="button" onclick="cargarSolicitudRol()">Reintentar</button>`;
+    }
+  }
+}
+
+async function enviarSolicitudRol(event) {
+  event.preventDefault();
+  const idSolicitante = usuarioId;
+  const boton = event.submitter;
+  const campo = document.getElementById('requestedRole');
+  const rol = campo?.value;
+  if (!idSolicitante || currentRole !== 'owner' || !['albergue','negocio'].includes(rol)) return;
+  if (!confirm(`¿Enviar tu solicitud para ser ${rol === 'albergue' ? 'Albergue' : 'Negocio PET'}?`)) return;
+  if (boton) boton.disabled = true;
+  try {
+    const {data:{user},error:authError} = await supabaseClient.auth.getUser();
+    if (authError || !user || user.id !== idSolicitante) throw new Error('Inicia sesión nuevamente.');
+    const {error} = await supabaseClient.from('role_requests').insert({
+      user_id: user.id,
+      requested_role: rol,
+      status: 'pendiente'
+    });
+    if (error) {
+      if (error.code === '23505') {
+        await cargarSolicitudRol();
+        alert('Ya existe una solicitud para esta cuenta.');
+        return;
+      }
+      throw error;
+    }
+    toast('¡Solicitud enviada para revisión!');
+    await cargarSolicitudRol();
+  } catch (error) {
+    alert('No se pudo enviar la solicitud: ' + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
+
+async function eliminarMascota(petId) {
+  const confirmar = confirm(
+    '¿Estás seguro de eliminar esta mascota? Esta acción no se puede deshacer.'
+  );
+  if (!confirmar) return;
+  try {
+    const { data: authData, error: authError } =
+      await supabaseClient.auth.getUser();
+    if (authError || !authData.user) {
+      throw new Error('Debes iniciar sesión.');
+    }
+    const userId = authData.user.id;
+    // 1. Verificar que la mascota pertenece al usuario.
+    const { data: mascota, error: mascotaError } =
+      await supabaseClient
+        .from('pets')
+        .select('id')
+        .eq('id', petId)
+        .eq('owner_id', userId)
+        .single();
+    if (mascotaError || !mascota) {
+      throw new Error('No se encontró la mascota o no tienes permiso.');
+    }
+    // 2. Obtener las rutas de sus fotografías.
+    const { data: fotos, error: fotosError } =
+      await supabaseClient
+        .from('pet_photos')
+        .select('image_path')
+        .eq('pet_id', petId);
+    if (fotosError) throw fotosError;
+    // 3. Eliminar los archivos de Supabase Storage.
+    const rutas = (fotos || [])
+      .map(foto => foto.image_path)
+      .filter(ruta =>
+        typeof ruta === 'string' &&
+        ruta.startsWith(userId + '/')
+      );
+    if (rutas.length !== (fotos || []).length) {
+      throw new Error(
+        'Algunas fotografías tienen rutas inesperadas. No se eliminó la mascota.'
+      );
+    }
+        const { data, error } = await supabaseClient
+      .from('pets')
+      .delete()
+      .eq('id', petId)
+      .eq('owner_id', userId)
+      .select('id');
+    if (error) throw error;
+    if (!data?.length) {
+      throw new Error('No se pudo eliminar el registro de la mascota.');
+    }
+    let limpiezaPendiente = false;
+    const rutasUnicas = [...new Set(rutas)];
+    if (rutasUnicas.length > 0) {
+      try {
+        const { data: borradas, error: storageError } =
+          await supabaseClient.storage.from('pet-photos').remove(rutasUnicas);
+        if (storageError) throw storageError;
+        limpiezaPendiente = borradas?.length !== rutasUnicas.length;
+      } catch (storageError) {
+        console.error('Error al eliminar las fotos de Storage:', storageError);
+        limpiezaPendiente = true;
+      }
+    }
+    await cargarMascotas();
+    renderPage();
+    if (limpiezaPendiente) {
+      alert('La ficha se eliminó, pero no se pudo confirmar el borrado de todas sus fotos.');
+    } else {
+      toast('¡Mascota eliminada correctamente!');
+    }
+  } catch (error) {
+    console.error('Error al eliminar mascota:', error);
+    alert('Error al eliminar mascota: ' + error.message);
+  }
+}
+function petTile(emoji, name, detail, status, adopt = false, foto = null, petId = null, ownerId = null) {
+  const imagen = foto
+    ? `<img src="${escapeAttr(foto)}"
+         alt="Foto de ${escapeAttr(name)}"
+         style="width:100%;height:130px;object-fit:contain;display:block;"
+         onerror="this.remove();">`
+    : '';
+const esMiMascota = petId &&
+  usuarioId &&
+  ownerId === usuarioId;
+  return `
+    <article class="pet-card">
+      <div class="pet-photo">
+        <span style="${foto ? 'display:none;' : ''}">${emoji}</span>
+        ${imagen}
+      </div>
+      <div class="pet-info">
+        <h3>${escapeHtml(name)}</h3>
+        <p>${escapeHtml(detail)}</p>
+        <span class="tag">${escapeHtml(status)}</span>
+        ${esMiMascota ? `
+          <button class="btn small"
+            style="width:100%;margin-top:11px"
+            onclick="editarMascota('${escapeAttr(petId)}')">
+            ✏️ Editar mascota
+          </button>
+          <button class="btn small"
+            style="width:100%;margin-top:8px;background:#dc3545;color:white;"
+            onclick="eliminarMascota('${escapeAttr(petId)}')">
+            🗑️ Eliminar mascota
+        </button> 
+        ` : ''}
+        ${adopt && !esMiMascota ? `
+          <button class="btn small"
+            style="width:100%;margin-top:11px"
+            onclick="toast('¡Interés registrado!')">
+            Me interesa
+          </button>
+        ` : ''}
+      </div>
+    </article>
+  `;
+}
+function feed(emoji,title,desc){return `<div class="feed-item"><div class="emoji">${emoji}</div><div><strong>${title}</strong><p>${desc}</p></div></div>`}
+function productRow(p){return `<div class="product-row"><div class="product-left"><div class="product-emoji">${p.emoji}</div><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.category)}</small></div></div><span class="price">${p.price}</span></div>`}
+function openCreate() {
+  const isPet = currentRole !== 'business';
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>${isPet ? 'Agregar mascota' : 'Agregar producto o servicio'}</h2>
+          <button class="close" onclick="closeModal()">✕</button>
+        </div>
+        <form onsubmit="saveNew(event, ${isPet})">
+          <div class="field">
+            <label>${isPet ? 'Nombre de la mascota' : 'Nombre del producto o servicio'}</label>
+            <input id="newName" required maxlength="100">
+          </div>
+          ${isPet ? `
+            <div class="field">
+              <label>Especie</label>
+              <select id="newSpecies" required>
+                <option value="Perro">Perro</option>
+                <option value="Gato">Gato</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Raza (opcional)</label>
+              <input id="newBreed" maxlength="100">
+            </div>
+            <div class="field">
+              <label>Edad en años (opcional)</label>
+              <input id="newAge" type="number" min="0" max="100">
+            </div>
+            <div class="field">
+              <label>Sexo</label>
+              <select id="newSex">
+                <option value="">No especificado</option>
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Descripción (opcional)</label>
+              <textarea id="newDescription" rows="3"></textarea>
+            </div>
+            <div class="field">
+              <label>Ubicación (opcional)</label>
+              <input id="newLocation" maxlength="150"
+                placeholder="Ej. Lima, Perú">
+            </div>
+            <div class="field">
+  <label>Fotografías de la mascota (opcional)</label>
+  <input
+    id="newPetPhotos"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+  >
+  <small class="muted">
+    Puedes seleccionar varias fotografías.
+    Formatos: JPG, PNG o WEBP.
+    Máximo 5 MB por fotografía.
+  </small>
+</div>
+          ` : `
+            <div class="field">
+              <label>Categoría</label>
+              <input id="newDetail" required>
+            </div>
+            <div class="field">
+              <label>Precio</label>
+              <input id="newPrice" required placeholder="S/ 50.00">
+            </div>
+          `}
+          <button class="btn" type="submit" style="width:100%">
+            Guardar publicación
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+}
+async function saveNew(e, isPet) {
+  e.preventDefault();
+  const boton = e.submitter;
+  if (boton) boton.disabled = true;
+  const name = document.getElementById('newName').value.trim();
+  try {
+    if (isPet) {
+      const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
+      if (authError || !authData.user) {
+        throw new Error('Debes iniciar sesión para registrar una mascota.');
+      }
+      const species = document.getElementById('newSpecies').value;
+      const breed = document.getElementById('newBreed').value.trim();
+      const ageValue = document.getElementById('newAge').value;
+      const sex = document.getElementById('newSex').value;
+      const description =
+        document.getElementById('newDescription').value.trim();
+      const location =
+        document.getElementById('newLocation').value.trim();
+      if (!name) {
+        throw new Error('Ingresa el nombre de la mascota.');
+      }
+      const archivos = Array.from(
+  document.getElementById('newPetPhotos')?.files || []
+);
+const formatos = ['image/jpeg', 'image/png', 'image/webp'];
+for (const archivo of archivos) {
+  if (!formatos.includes(archivo.type) || archivo.size > 5 * 1024 * 1024) {
+    throw new Error('Las fotos deben ser JPG, PNG o WEBP y pesar máximo 5 MB.');
+  }
+}
+      const nuevaMascota = {
+        owner_id: authData.user.id,
+        name: name,
+        species: species,
+        breed: breed || null,
+        age: ageValue === '' ? null : Number(ageValue),
+        sex: sex || null,
+        description: description || null,
+        location: location || null,
+        status: 'disponible'
+      };
+      const { data: mascotaGuardada, error } = await supabaseClient
+  .from('pets')
+  .insert(nuevaMascota)
+  .select('id')
+  .single();
+if (error) throw error;
+            let fotosGuardadas = 0;
+      let falloFoto = false;
+      for (const archivo of archivos) {
+        try {
+          const extension = archivo.type === 'image/jpeg'
+            ? 'jpg'
+            : archivo.type === 'image/png' ? 'png' : 'webp';
+          const ruta = `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
+          const { error: errorSubida } = await supabaseClient.storage
+            .from('pet-photos')
+            .upload(ruta, archivo, { contentType: archivo.type });
+          if (errorSubida) throw errorSubida;
+          const { error: errorFoto } = await supabaseClient
+            .from('pet_photos')
+            .insert({
+              pet_id: mascotaGuardada.id,
+              image_path: ruta
+            });
+          if (errorFoto) throw errorFoto;
+          fotosGuardadas++;
+        } catch (errorFoto) {
+          console.error('Error al guardar una foto:', errorFoto);
+          falloFoto = true;
+        }
+      }
+      closeModal();
+      if (falloFoto) {
+        alert(
+          `La mascota se guardó con ${fotosGuardadas} de ${archivos.length} fotos. ` +
+          'Ve a Mis mascotas y abre Editar mascota para agregar las que faltan.'
+        );
+      } else {
+        toast('¡Mascota guardada en Supabase!');
+      }
+      await cargarMascotas();    } else {
+      const detail =
+        document.getElementById('newDetail').value.trim();
+      const price =
+        document.getElementById('newPrice').value.trim();
+        products.unshift({
+        name,
+        category: detail,
+        price,
+        emoji: '🛍️'
+      });
+      toast('¡Producto agregado temporalmente!');
+    }
+    closeModal();
+    renderPage();
+  } catch (error) {
+    alert('No se pudo guardar: ' + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
+function closeModal(){document.getElementById('modalRoot').innerHTML=''}
+function filterPets() {
+  const q = (document.getElementById('petSearch')?.value || '')
+    .toLowerCase();
+  const f = document.getElementById('petFilter')?.value || '';
+  let list = activePage === 'mis mascotas'
+    ? pets.filter(p => p.owner_id === usuarioId)
+    : pets;
+  list = list.filter(p =>
+    (p.name + ' ' + p.kind + ' ' + p.place)
+      .toLowerCase()
+      .includes(q) &&
+    (!f || p.kind.includes(f))
+  );
+  document.getElementById('petResults').innerHTML = list.length
+    ? list.map(p =>      
+petTile(
+  p.emoji,
+  p.name,
+  p.kind + ' · ' + p.place,
+  p.status,
+  true,
+  p.foto,
+  p.id,
+  p.owner_id
+)
+      ).join('')
+    : '<div class="empty">No encontramos mascotas con esos filtros.</div>';
+}
+async function editarMascota(petId) {
+  try {
+    const { data: authData, error: authError } =
+      await supabaseClient.auth.getUser();
+    if (authError || !authData.user) {
+      throw new Error('Debes iniciar sesión.');
+    }
+    const { data: mascota, error } = await supabaseClient
+      .from('pets')
+      .select('id, name, species, breed, age, sex, description, location')
+      .eq('id', petId)
+      .eq('owner_id', authData.user.id)
+      .single();
+    if (error || !mascota) {
+      throw new Error('No se pudo encontrar tu mascota.');
+    }
+    document.getElementById('modalRoot').innerHTML = `
+      <div class="modal-backdrop"
+        onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+          <div class="modal-head">
+            <h2>Editar mascota</h2>
+            <button class="close"
+              onclick="closeModal()">✕</button>
+          </div>
+          <form id="formEditarMascota">
+            <div class="field">
+              <label>Nombre</label>
+              <input id="editName" required maxlength="100">
+            </div>
+            <div class="field">
+              <label>Especie</label>
+              <select id="editSpecies" required>
+                <option value="Perro">Perro</option>
+                <option value="Gato">Gato</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Raza</label>
+              <input id="editBreed" maxlength="100">
+            </div>
+            <div class="field">
+              <label>Edad en años</label>
+              <input id="editAge" type="number" min="0" max="100">
+            </div>
+            <div class="field">
+              <label>Sexo</label>
+              <select id="editSex">
+                <option value="">No especificado</option>
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Descripción</label>
+              <textarea id="editDescription" rows="3"></textarea>
+            </div>
+<div class="field">
+  <label>Ubicación</label>
+  <input id="editLocation" maxlength="150">
+</div>
+<div class="field">
+  <label>📷 Cambiar fotografía</label>
+  <input
+    id="editPhoto"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+  >
+  <small style="color:#64748b">
+    Selecciona una nueva imagen JPG, PNG o WEBP
+    (máximo 5 MB). Si no seleccionas ninguna,
+    se conservará la fotografía actual.
+  </small>
+</div>
+<button class="btn" type="submit"
+  style="width:100%">
+  Guardar cambios
+</button>
+          </form>
+        </div>
+      </div>
+    `;
+    document.getElementById('editName').value = mascota.name || '';
+    document.getElementById('editSpecies').value =
+      ['Perro', 'Gato', 'Otro'].includes(mascota.species)
+        ? mascota.species : 'Otro';
+    document.getElementById('editBreed').value = mascota.breed || '';
+    document.getElementById('editAge').value = mascota.age ?? '';
+    document.getElementById('editSex').value = mascota.sex || '';
+    document.getElementById('editDescription').value =
+      mascota.description || '';
+    document.getElementById('editLocation').value =
+      mascota.location || '';
+    document.getElementById('formEditarMascota')
+      .addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const boton = e.submitter;
+        if (boton) boton.disabled = true;
+        try {
+          const edad = document.getElementById('editAge').value;
+          const cambios = {
+            name: document.getElementById('editName').value.trim(),
+            species: document.getElementById('editSpecies').value,
+            breed: document.getElementById('editBreed').value.trim() || null,
+            age: edad === '' ? null : Number(edad),
+            sex: document.getElementById('editSex').value || null,
+            description:
+              document.getElementById('editDescription').value.trim() || null,
+            location:
+              document.getElementById('editLocation').value.trim() || null
+          };
+          if (!cambios.name) {
+            throw new Error('Ingresa el nombre de la mascota.');
+          }
+          const archivo = document.getElementById('editPhoto')?.files[0];
+          const formatos = ['image/jpeg', 'image/png', 'image/webp'];
+          if (archivo && !formatos.includes(archivo.type)) {
+            throw new Error('La fotografía debe ser JPG, PNG o WEBP.');
+          }
+          if (archivo && archivo.size > 5 * 1024 * 1024) {
+            throw new Error('La fotografía no debe superar los 5 MB.');
+          }
+          const { data: actualizada, error: updateError } =
+            await supabaseClient
+              .from('pets')
+              .update(cambios)
+              .eq('id', petId)
+              .eq('owner_id', authData.user.id)
+              .select('id')
+              .single();
+          if (updateError || !actualizada) {
+            throw updateError || new Error('No se pudo actualizar la mascota.');
+          }
+                    let fotoAnteriorPendiente = false;
+          if (archivo) {
+            try {
+              const { data: fotos, error: errorConsulta } = await supabaseClient
+                .from('pet_photos')
+                .select('id, image_path')
+                .eq('pet_id', petId)
+                .order('created_at', { ascending: false, nullsFirst: false })
+                .limit(1);
+              if (errorConsulta) throw errorConsulta;
+              const principal = fotos[0];
+              const extension = archivo.type === 'image/jpeg'
+                ? 'jpg'
+                : archivo.type === 'image/png' ? 'png' : 'webp';
+              const carpeta = authData.user.id + '/';
+              const ruta = carpeta + crypto.randomUUID() + '.' + extension;
+              const bucket = supabaseClient.storage.from('pet-photos');
+              const { error: errorSubida } = await bucket.upload(ruta, archivo, {
+                contentType: archivo.type
+              });
+              if (errorSubida) throw errorSubida;
+              if (principal) {
+                const { data: reemplazada, error: errorFoto } = await supabaseClient
+                  .from('pet_photos')
+                  .update({ image_path: ruta })
+                  .eq('id', principal.id)
+                  .eq('pet_id', petId)
+                  .eq('image_path', principal.image_path)
+                  .select('id');
+                if (errorFoto) throw errorFoto;
+                if (!reemplazada?.length) {
+                  await bucket.remove([ruta]);
+                  throw new Error('La foto principal cambió. Abre la ficha y vuelve a intentar.');
+                }
+                try {
+                  const rutaAnterior = principal.image_path;
+                  if (rutaAnterior.startsWith(carpeta)) {
+                    const { data: referencias, error: errorReferencias } =
+                      await supabaseClient.from('pet_photos').select('id')
+                        .eq('image_path', rutaAnterior).limit(1);
+                    if (errorReferencias) throw errorReferencias;
+                    if (referencias.length === 0) {
+                      const { data: borradas, error: errorBorrado } =
+                        await bucket.remove([rutaAnterior]);
+                      if (errorBorrado) throw errorBorrado;
+                      fotoAnteriorPendiente = borradas?.length !== 1;
+                    }
+                  }
+                } catch (errorLimpieza) {
+                  console.error('Error al retirar la foto anterior:', errorLimpieza);
+                  fotoAnteriorPendiente = true;
+                }
+              } else {
+                const { error: errorFoto } = await supabaseClient
+                  .from('pet_photos')
+                  .insert({ pet_id: petId, image_path: ruta });
+                if (errorFoto) throw errorFoto;
+              }
+            } catch (errorFoto) {
+              console.error('Error al guardar la foto:', errorFoto);
+              alert('Los datos de la mascota se guardaron, pero no se pudo confirmar la foto nueva. ' + errorFoto.message);
+              await cargarMascotas();
+              return;
+            }
+          }
+          await cargarMascotas();
+          closeModal();
+          renderPage();
+          toast(fotoAnteriorPendiente
+            ? 'Foto actualizada. Queda revisar la foto anterior en Storage.'
+            : '¡Mascota actualizada correctamente!');
+        } catch (error) {
+          alert('No se pudo actualizar: ' + error.message);
+        } finally {
+          if (boton) boton.disabled = false;
+        }
+      });
+  } catch (error) {
+    alert('Error al editar mascota: ' + error.message);
+  }
+}
+function filterProducts(){let q=(document.getElementById('productSearch')?.value||'').toLowerCase();let list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('productResults').innerHTML=list.length?list.map(productRow).join(''):'<div class="empty">No encontramos resultados.</div>'}
+
+// ===== AVISOS DE MASCOTAS PERDIDAS / ENCONTRADAS =====
+let avisosPerdidas = [];
+let errorAvisos = '';
+function vistaAvisos() {
+  return `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-head"><h2>🔎 Mascotas perdidas y encontradas</h2></div>
+    <p class="muted">Publica un aviso y ayuda a reunir a una mascota con su familia.</p>
+    <button class="btn" onclick="abrirNuevoAviso()">＋ Publicar aviso</button>
+  </div>
+  <div class="lost-toolbar">
+    <input id="buscarAvisos" placeholder="Buscar por nombre, distrito o descripción" oninput="mostrarAvisos()">
+    <select id="filtroAvisos" onchange="mostrarAvisos()">
+      <option value="todos">Todos los estados</option><option value="activo">Activos</option><option value="resuelto">Resueltos</option>
+    </select>
+    <select id="tipoAvisos" onchange="mostrarAvisos()">
+      <option value="todos">Todos los avisos</option><option value="perdida">Mascotas perdidas</option><option value="encontrada">Mascotas encontradas</option>
+    </select>
+  </div>
+  <div id="resultadoAvisos"><p class="muted">Cargando avisos...</p></div>`;
+}
+async function cargarAvisos() {
+  if(activePage !== 'perdidas') return;
+  const {data,error} = await supabaseClient.from('lost_pets')
+    .select('*,lost_pet_photos(image_path,created_at)')
+    .order('created_at',{ascending:false});
+  if(activePage !== 'perdidas') return;
+  errorAvisos = error ? error.message : '';
+  avisosPerdidas = data || [];
+  mostrarAvisos();
+}
+function mostrarAvisos() {
+  const destino = document.getElementById('resultadoAvisos');
+  if(!destino) return;
+  if(errorAvisos){destino.innerHTML=`<div class="panel">No se pudieron cargar los avisos: ${escapeHtml(errorAvisos)}</div>`;return;}
+  const q = (document.getElementById('buscarAvisos')?.value || '').trim().toLowerCase();
+  const estado = document.getElementById('filtroAvisos')?.value || 'todos';
+  const tipo = document.getElementById('tipoAvisos')?.value || 'todos';
+  const lista = avisosPerdidas.filter(a =>
+    (estado==='todos' || a.status===estado) &&
+    (tipo==='todos' || a.report_type===tipo) &&
+    [a.pet_name,a.last_seen_location,a.description,a.species,a.color].join(' ').toLowerCase().includes(q)
+  );
+  destino.innerHTML = lista.length ? `<div class="lost-grid">${lista.map(avisoTarjeta).join('')}</div>`
+    : '<div class="panel empty">No se encontraron avisos con esos filtros.</div>';
+}
+function avisoTarjeta(a) {
+  const fotos = (a.lost_pet_photos || []).slice().sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
+  const url = fotos.length ? supabaseClient.storage.from('pet-photos').getPublicUrl(fotos[0].image_path).data.publicUrl : null;
+  const ilustracion = a.species?.toLowerCase()==='gato'?'🐱':'🐶';
+  const propia = usuarioId && a.user_id===usuarioId;
+  return `<article class="lost-card">
+    <div class="lost-photo">${url?`<img src="${escapeAttr(url)}" alt="Foto de aviso" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${ilustracion}</span>`:ilustracion}</div>
+    <div class="lost-body">
+      <span class="lost-tag ${a.status==='resuelto'?'found':''}">${a.status==='resuelto'?'Encontrada':a.report_type==='encontrada'?'Mascota encontrada':'Mascota perdida'}</span>
+      <h3>${escapeHtml(a.pet_name || a.species || 'Mascota sin nombre')}</h3>
+      <p><strong>Especie:</strong> ${escapeHtml(a.species || 'No indicada')}${a.breed?' · '+escapeHtml(a.breed):''}</p>
+      <p><strong>Lugar:</strong> ${escapeHtml(a.last_seen_location || '')}</p>
+      <p><strong>Fecha:</strong> ${escapeHtml(a.event_date || '')}</p>
+      ${a.color?`<p><strong>Color:</strong> ${escapeHtml(a.color)}</p>`:''}
+      ${a.description?`<p>${escapeHtml(a.description)}</p>`:''}
+      ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como encontrada</button>
+        <button class="btn small light" onclick="adjuntarFotoAviso('${escapeAttr(a.id)}')">📷 Adjuntar foto</button>`:''}
+      ${!propia && a.status==='activo' && a.report_type==='perdida'?`<button type="button" class="btn small" style="margin-top:10px" onclick="contactarDueno('${escapeAttr(a.id)}')">💬 Contactar al dueño</button>`:''}
+      ${propia?`<button type="button" class="btn small" style="background:#dc3545;color:#fff;margin-top:9px" onclick="eliminarAviso('${escapeAttr(a.id)}')">🗑️ Eliminar aviso</button>`:''}
+    </div>
+  </article>`;
+}
+function abrirNuevoAviso() {
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <div class="modal-head"><h2>Publicar aviso</h2><button class="close" onclick="closeModal()">✕</button></div>
+    <form onsubmit="guardarNuevoAviso(event)">
+      <div class="field"><label>Tipo de aviso</label><select id="avTipo"><option value="perdida">Mascota perdida</option><option value="encontrada">Mascota encontrada</option></select></div>
+      <div class="field"><label>Nombre (opcional)</label><input id="avNombre" maxlength="100"></div>
+      <div class="field"><label>Especie</label><select id="avEspecie" required><option value="Perro">Perro</option><option value="Gato">Gato</option><option value="Otro">Otro</option></select></div>
+      <div class="field"><label>Raza (opcional)</label><input id="avRaza" maxlength="100"></div>
+      <div class="field"><label>Color (opcional)</label><input id="avColor" maxlength="100"></div>
+      <div class="field"><label>Distrito o lugar donde se vio</label><input id="avLugar" required maxlength="200" placeholder="Ej. Miraflores, Lima"></div>
+      <div class="field"><label>Fecha de desaparición o hallazgo</label><input id="avFecha" type="date" required></div>
+      <div class="field"><label>Descripción (opcional)</label><textarea id="avDescripcion" rows="3" maxlength="2000"></textarea></div>
+      <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máximo 5 MB)</label><input id="avFoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+      <button class="btn" type="submit" style="width:100%">Publicar aviso</button>
+    </form></div></div>`;
+  document.getElementById('avFecha').value = new Date().toLocaleDateString('en-CA');
+}
+function validarArchivoAviso(archivo) {
+  if(!archivo)return;
+  if(!['image/jpeg','image/png','image/webp'].includes(archivo.type) || archivo.size>5*1024*1024)
+    throw new Error('La foto debe ser JPG, PNG o WEBP y pesar como máximo 5 MB.');
+}
+async function subirFotoAviso(avisoId,archivo,userId) {
+  validarArchivoAviso(archivo);
+  const ext = archivo.type==='image/jpeg'?'jpg':archivo.type==='image/png'?'png':'webp';
+  const ruta = `${userId}/avisos/${crypto.randomUUID()}.${ext}`;
+  const bucket = supabaseClient.storage.from('pet-photos');
+  const {error:subidaError} = await bucket.upload(ruta,archivo,{contentType:archivo.type});
+  if(subidaError)throw subidaError;
+  const {error:fotoError} = await supabaseClient.from('lost_pet_photos').insert({lost_pet_id:avisoId,image_path:ruta});
+  if(fotoError){
+    const {error:limpiezaError}=await bucket.remove([ruta]);
+    if(limpiezaError) console.error('Foto de aviso sin vincular:',ruta,limpiezaError);
+    throw fotoError;
+  }
+}
+async function guardarNuevoAviso(e) {
+  e.preventDefault();
+  const boton=e.submitter;if(boton)boton.disabled=true;
+  try{
+    const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!user)throw new Error('Debes iniciar sesión.');
+    const archivo=document.getElementById('avFoto').files[0];
+    validarArchivoAviso(archivo);
+    const registro={user_id:user.id,report_type:document.getElementById('avTipo').value,
+      pet_name:document.getElementById('avNombre').value.trim()||null,
+      species:document.getElementById('avEspecie').value,
+      breed:document.getElementById('avRaza').value.trim()||null,
+      color:document.getElementById('avColor').value.trim()||null,
+      last_seen_location:document.getElementById('avLugar').value.trim(),
+      event_date:document.getElementById('avFecha').value,
+      description:document.getElementById('avDescripcion').value.trim()||null,
+      status:'activo'};
+    if(!registro.last_seen_location||!registro.event_date)throw new Error('Completa lugar y fecha.');
+    const {data:aviso,error}=await supabaseClient.from('lost_pets').insert(registro).select('id').single();
+    if(error)throw error;
+    closeModal();
+    if(archivo){
+      try{await subirFotoAviso(aviso.id,archivo,user.id);}
+      catch(fotoError){alert('El aviso se publicó, pero la foto no se pudo guardar. Puedes adjuntarla desde el aviso. Detalle: '+fotoError.message);}
+    }
+    await cargarAvisos();
+    toast('¡Aviso publicado!');
+  }catch(err){alert('No se pudo publicar: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+async function adjuntarFotoAviso(avisoId) {
+  const fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='image/jpeg,image/png,image/webp';
+  fileInput.onchange=async()=>{
+    if(!fileInput.files[0])return;
+    try{
+      const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+      if(authError||!user)throw new Error('Debes iniciar sesión.');
+      const {data:aviso,error:avisoError}=await supabaseClient.from('lost_pets').select('id').eq('id',avisoId).eq('user_id',user.id).single();
+      if(avisoError||!aviso)throw new Error('No tienes permiso para modificar el aviso.');
+      await subirFotoAviso(avisoId,fileInput.files[0],user.id);
+      await cargarAvisos();toast('Foto agregada al aviso.');
+    }catch(err){alert('No se pudo adjuntar la foto: '+err.message);}
+  };
+  fileInput.click();
+}
+async function resolverAviso(avisoId) {
+  if(!confirm('¿Confirmas que la mascota fue encontrada y quieres cerrar este aviso?'))return;
+  try{
+    const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!user)throw new Error('Debes iniciar sesión.');
+    const {data,error}=await supabaseClient.from('lost_pets').update({status:'resuelto'})
+      .eq('id',avisoId).eq('user_id',user.id).select('id');
+    if(error)throw error;
+    if(!data?.length)throw new Error('No se pudo actualizar el aviso.');
+    await cargarAvisos();toast('¡Mascota marcada como encontrada!');
+  }catch(err){alert('No se pudo cambiar el estado: '+err.message);}
+}
+
+// Elimina únicamente un aviso propio. Primero se borra la fila del aviso;
+// la clave foránea elimina automáticamente sus registros en lost_pet_photos.
+// Después se limpian los archivos físicos de Storage, sin afectar otros avisos.
+async function eliminarAviso(avisoId) {
+  if (!confirm('¿Eliminar este aviso y sus fotografías definitivamente? Esta acción no se puede deshacer.')) return;
+  try {
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    const user = authData?.user;
+    if (authError || !user) throw new Error('Debes iniciar sesión.');
+
+    const { data: aviso, error: avisoError } = await supabaseClient
+      .from('lost_pets').select('id').eq('id', avisoId).eq('user_id', user.id).single();
+    if (avisoError || !aviso) throw new Error('No se encontró el aviso o no tienes permiso.');
+
+    const { data: fotos, error: fotosError } = await supabaseClient
+      .from('lost_pet_photos').select('image_path').eq('lost_pet_id', avisoId);
+    if (fotosError) throw fotosError;
+    const carpeta = user.id + '/avisos/';
+    const rutas = (fotos || []).map(f => f.image_path);
+    if (!rutas.every(r => typeof r === 'string' && r.startsWith(carpeta))) {
+      throw new Error('Se detectaron rutas de fotografías inesperadas. El aviso no fue eliminado.');
+    }
+
+    const { data: eliminados, error: deleteError } = await supabaseClient
+      .from('lost_pets').delete().eq('id', avisoId).eq('user_id', user.id).select('id');
+    if (deleteError) throw deleteError;
+    if (!eliminados?.length) throw new Error('El aviso no pudo eliminarse.');
+
+    let limpiezaPendiente = false;
+    const rutasUnicas = [...new Set(rutas)];
+    if (rutasUnicas.length) {
+      try {
+        const { data: borradas, error: storageError } = await supabaseClient.storage
+          .from('pet-photos').remove(rutasUnicas);
+        if (storageError) throw storageError;
+        limpiezaPendiente = borradas?.length !== rutasUnicas.length;
+      } catch (storageError) {
+        console.error('No se pudieron retirar todas las fotografías del aviso:', storageError);
+        limpiezaPendiente = true;
+      }
+    }
+    await cargarAvisos();
+    if (limpiezaPendiente) {
+      alert('El aviso fue eliminado de Supabase, pero quedaron fotografías por revisar en Storage.');
+    } else {
+      toast('¡Aviso eliminado correctamente!');
+    }
+  } catch (error) {
+    console.error('Error al eliminar el aviso:', error);
+    alert('No se pudo eliminar el aviso: ' + error.message);
+  }
+}
+
+
+// ===== NOTIFICACIONES Y CONFIRMACIÓN DE LECTURA =====
+function actualizarIndicadoresChat() {
+  document.querySelectorAll('[data-unread-count]').forEach(etiqueta => {
+    etiqueta.textContent = mensajesNoLeidos > 99 ? '99+' : String(mensajesNoLeidos);
+    etiqueta.classList.toggle('hidden', mensajesNoLeidos === 0);
+  });
+  document.querySelectorAll('[data-chat-unread]').forEach(etiqueta => {
+    const cantidad = noLeidosPorConversacion[etiqueta.dataset.chatUnread] || 0;
+    etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
+    etiqueta.classList.toggle('hidden', cantidad === 0);
+  });
+}
+function iniciarNotificacionesChat() {
+  if (notificacionesPollingId) clearInterval(notificacionesPollingId);
+  consultarNotificacionesChat();
+  // Consulta periódica, incluso fuera de la pantalla de mensajes.
+  notificacionesPollingId = setInterval(() => {
+    if (usuarioId && !document.hidden) consultarNotificacionesChat();
+  }, 12000);
+}
+async function consultarNotificacionesChat() {
+  if (!usuarioId || notificacionesConsultando) return;
+  notificacionesConsultando = true;
+  const usuarioConsultado = usuarioId;
+  try {
+    const {data:chats,error:chatError} = await supabaseClient.from('conversations')
+      .select('id')
+      .or(`owner_id.eq.${usuarioConsultado},finder_id.eq.${usuarioConsultado}`);
+    if (chatError) throw chatError;
+    const ids = (chats || []).map(c => c.id);
+    const conteos = {};
+    if (ids.length) {
+      // Contadores exactos; no dependen del límite de filas mostrado por Supabase.
+      const resultados = await Promise.all(ids.map(async id => {
+        const {count,error} = await supabaseClient.from('messages')
+          .select('id', {count:'exact',head:true})
+          .eq('conversation_id',id)
+          .neq('sender_id',usuarioConsultado)
+          .is('read_at',null);
+        if (error) throw error;
+        return [id,count || 0];
+      }));
+      resultados.forEach(([id,n]) => { conteos[id]=n; });
+    }
+    if (usuarioId !== usuarioConsultado) return;
+    noLeidosPorConversacion = conteos;
+    mensajesNoLeidos = Object.values(conteos).reduce((sum,n) => sum+n,0);
+    actualizarIndicadoresChat();
+  } catch (error) {
+    console.error('No se pudo consultar el contador de mensajes:',error);
+  } finally {
+    notificacionesConsultando = false;
+  }
+}
+async function marcarMensajesLeidos(conversacionId, mensajes) {
+  if (!usuarioId || activePage!=='mensajes' || conversacionActivaId!==conversacionId) return;
+  const pendientes = mensajes.filter(m => m.sender_id !== usuarioId && !m.read_at).map(m => m.id);
+  if (!pendientes.length) return;
+  const usuarioActual = usuarioId;
+  try {
+    const {error} = await supabaseClient.from('messages')
+      .update({read_at:new Date().toISOString()})
+      .eq('conversation_id',conversacionId)
+      .neq('sender_id',usuarioActual)
+      .is('read_at',null)
+      .in('id',pendientes);
+    if (error) throw error;
+    if (usuarioId === usuarioActual) await consultarNotificacionesChat();
+  } catch (error) {
+    console.error('No se pudo marcar como leído:',error);
+  }
+}
+
+// ===== CHAT PRIVADO DE AVISOS (Supabase) =====
+// Un usuario puede contactar únicamente al dueño de un aviso activo de tipo perdida.
+// Los permisos de lectura y escritura se vuelven a comprobar en Supabase mediante RLS.
+function vistaMensajes() {
+  return `<div class="panel chat-intro"><div class="panel-head"><h2>💬 Mis mensajes</h2>
+    <button class="btn light small" type="button" onclick="cargarConversaciones()">↻ Actualizar</button></div>
+    <p class="muted">Conversa de forma privada con las personas que publicaron o encontraron una mascota.</p></div>
+    <div id="chatView"><div class="panel empty">Cargando conversaciones...</div></div>`;
+}
+function iniciarActualizacionChat() {
+  if (chatPollingId) clearInterval(chatPollingId);
+  chatPollingId = setInterval(async () => {
+    if (activePage !== 'mensajes' || !usuarioId || !conversacionActivaId || chatRefreshInProgress) return;
+    chatRefreshInProgress = true;
+    try { await cargarMensajes(true); }
+    finally { chatRefreshInProgress = false; }
+  }, 7000);
+}
+function obtenerParticipante(c) {
+  return c.owner_id === usuarioId ? 'Persona que encontró la mascota' : 'Dueño de la mascota';
+}
+function obtenerTituloChat(c) {
+  const n = c.lost_pets?.pet_name;
+  return n ? `Aviso de ${n}` : (c.lost_pet_id ? 'Aviso de mascota perdida' : 'Aviso eliminado');
+}
+async function cargarConversaciones() {
+  if (activePage !== 'mensajes') return;
+  const destino = document.getElementById('chatView');
+  if (!destino) return;
+  conversacionActivaId = null;
+  destino.innerHTML = '<div class="panel empty">Cargando conversaciones...</div>';
+  try {
+    if (!usuarioId) throw new Error('Debes iniciar sesión.');
+    const { data, error } = await supabaseClient.from('conversations')
+      .select('id,owner_id,finder_id,lost_pet_id,created_at,lost_pets(pet_name)')
+      .or(`owner_id.eq.${usuarioId},finder_id.eq.${usuarioId}`)
+      .order('created_at', { ascending:false });
+    if (error) throw error;
+    if (activePage !== 'mensajes' || conversacionActivaId) return;
+    await consultarNotificacionesChat();
+    if (activePage !== 'mensajes' || conversacionActivaId) return;
+    destino.innerHTML = data?.length
+      ? `<div class="chat-inbox">${data.map(c => `<button type="button" class="chat-contact" onclick="abrirConversacion('${escapeAttr(c.id)}')">
+           <span class="chat-contact-icon">💬</span><span class="chat-contact-body"><strong>${escapeHtml(obtenerTituloChat(c))}</strong>
+           <small>${escapeHtml(obtenerParticipante(c))} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span class="chat-unread-badge ${noLeidosPorConversacion[c.id]?'':'hidden'}" data-chat-unread="${escapeAttr(c.id)}">${noLeidosPorConversacion[c.id] || ''}</span><span>›</span></button>`).join('')}</div>`
+      : '<div class="panel empty">Todavía no tienes conversaciones. Para iniciar una, entra a Mascotas perdidas y pulsa «Contactar al dueño» en un aviso de otra persona.</div>';
+  } catch (error) {
+    if (activePage === 'mensajes' && !conversacionActivaId)
+      destino.innerHTML = `<div class="panel">No se pudieron cargar las conversaciones: ${escapeHtml(error.message)}</div>`;
+  }
+}
+async function contactarDueno(avisoId) {
+  try {
+    const {data:auth, error:authError} = await supabaseClient.auth.getUser();
+    const user = auth?.user;
+    if (authError || !user) throw new Error('Debes iniciar sesión.');
+    const {data:aviso,error:avisoError} = await supabaseClient.from('lost_pets')
+      .select('id,user_id,report_type,status').eq('id',avisoId).single();
+    if (avisoError || !aviso) throw new Error('Este aviso ya no está disponible.');
+    if (aviso.user_id === user.id) throw new Error('No puedes enviarte mensajes a ti mismo.');
+    if (aviso.report_type !== 'perdida' || aviso.status !== 'activo')
+      throw new Error('Solo puedes iniciar chats desde avisos activos de mascotas perdidas.');
+    let {data:conversacion,error:buscarError} = await supabaseClient.from('conversations')
+      .select('id').eq('lost_pet_id',avisoId).eq('finder_id',user.id).maybeSingle();
+    if (buscarError) throw buscarError;
+    if (!conversacion) {
+      const nuevo = await supabaseClient.from('conversations')
+        .insert({lost_pet_id:avisoId,owner_id:aviso.user_id,finder_id:user.id})
+        .select('id').single();
+      if (nuevo.error) {
+        // Si se pulsó dos veces, otra solicitud pudo haber creado la conversación.
+        if (nuevo.error.code !== '23505') throw nuevo.error;
+        const existente = await supabaseClient.from('conversations').select('id')
+          .eq('lost_pet_id',avisoId).eq('finder_id',user.id).single();
+        if (existente.error) throw existente.error;
+        conversacion = existente.data;
+      } else conversacion = nuevo.data;
+    }
+    navigate('Mensajes');
+    await abrirConversacion(conversacion.id);
+  } catch (error) {
+    alert('No se pudo abrir el chat: ' + error.message);
+  }
+}
+async function abrirConversacion(conversacionId) {
+  if (activePage !== 'mensajes') navigate('Mensajes');
+  const destino = document.getElementById('chatView');
+  if (!destino) return;
+  conversacionActivaId = conversacionId;
+  destino.innerHTML = '<div class="panel empty">Abriendo conversación...</div>';
+  try {
+    const {data:c,error} = await supabaseClient.from('conversations')
+      .select('id,owner_id,finder_id,lost_pet_id,lost_pets(pet_name)').eq('id',conversacionId).single();
+    if (error || !c) throw error || new Error('Conversación no disponible.');
+    if (activePage !== 'mensajes' || conversacionActivaId !== conversacionId) return;
+    destino.innerHTML = `<section class="chat-shell">
+      <div class="chat-header"><button type="button" class="btn light small" onclick="cargarConversaciones()">← Volver</button>
+      <div><strong>${escapeHtml(obtenerTituloChat(c))}</strong><small>${escapeHtml(obtenerParticipante(c))}</small></div></div>
+      <div class="chat-messages" id="chatMessages" aria-live="polite">Cargando mensajes...</div>
+      <form class="chat-compose" onsubmit="enviarMensaje(event)">
+      <textarea id="chatTexto" maxlength="2000" rows="2" required placeholder="Escribe tu mensaje..."></textarea>
+      <button class="btn" type="submit">Enviar</button></form>
+      <p class="chat-hint">Por tu seguridad, evita compartir datos personales hasta verificar con quién conversas.</p></section>`;
+    await cargarMensajes();
+    iniciarActualizacionChat();
+  } catch (error) {
+    if (activePage === 'mensajes' && conversacionActivaId === conversacionId)
+      destino.innerHTML = `<div class="panel">Error al abrir conversación: ${escapeHtml(error.message)}<p><button class="btn light small" onclick="cargarConversaciones()">Volver</button></p></div>`;
+  }
+}
+async function cargarMensajes(silencioso = false) {
+  const id = conversacionActivaId;
+  const destino = document.getElementById('chatMessages');
+  if (activePage !== 'mensajes' || !id || !destino) return;
+  try {
+    const {data,error} = await supabaseClient.from('messages')
+      .select('id,sender_id,content,created_at,read_at').eq('conversation_id',id)
+      .order('created_at',{ascending:true}).limit(300);
+    if (error) throw error;
+    if (conversacionActivaId !== id || activePage !== 'mensajes') return;
+    const cercaDelFinal = destino.scrollHeight - destino.scrollTop - destino.clientHeight < 85;
+    const antes = destino.innerHTML;
+    const nuevo = data?.length ? data.map(m => `<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p>
+      <small>${new Date(m.created_at).toLocaleString('es-PE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${m.sender_id===usuarioId?` · <span class="chat-message-status">${m.read_at?'Leído ✓✓':'Enviado ✓'}</span>`:''}</small></div>`).join('')
+      : '<div class="empty">Todavía no hay mensajes. ¡Escribe el primero!</div>';
+    if (antes !== nuevo) {
+      destino.innerHTML = nuevo;
+      if (!silencioso || cercaDelFinal) destino.scrollTop = destino.scrollHeight;
+    }
+    await marcarMensajesLeidos(id, data || []);
+  } catch (error) {
+    if (!silencioso && conversacionActivaId === id)
+      destino.innerHTML = `<div class="empty">Error al cargar mensajes: ${escapeHtml(error.message)}</div>`;
+    else console.error('Error al actualizar mensajes:',error);
+  }
+}
+async function enviarMensaje(e) {
+  e.preventDefault();
+  const id = conversacionActivaId;
+  const input = document.getElementById('chatTexto');
+  const contenido = input?.value.trim() || '';
+  if (!id || !contenido || contenido.length > 2000) return;
+  const boton = e.submitter;
+  if (boton) boton.disabled = true;
+  try {
+    const {data:auth,error:authError} = await supabaseClient.auth.getUser();
+    if (authError || !auth?.user) throw new Error('Debes iniciar sesión.');
+    const {error} = await supabaseClient.from('messages')
+      .insert({conversation_id:id,sender_id:auth.user.id,content:contenido});
+    if (error) throw error;
+    if (conversacionActivaId === id && input) input.value='';
+    await cargarMensajes();
+    consultarNotificacionesChat();
+  } catch (error) { alert('No se pudo enviar el mensaje: ' + error.message); }
+  finally { if (boton) boton.disabled=false; }
+}
+
+function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
+function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escapeAttr(s){return escapeHtml(s)}
+showHome();
+</script>
+<script>
+  const SUPABASE_URL =
+  "https://ogzyjovzcxvdegsrxnva.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_4sqKB93HBg_aTT4_lZo9eg_BMuevUjF";
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+  console.log("Patitas: cliente Supabase inicializado");
+</script>
+</body>
+</html>
