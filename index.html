@@ -712,7 +712,18 @@ async function eliminarPublicacionAdopcion(id){
   'También se borrarán todas sus solicitudes de adopción (incluso las aprobadas) y las referencias de sus fotografías.\n'+
   'Las imágenes del almacenamiento se intentarán eliminar. Esta acción no se puede deshacer.\n\n'+
   'Para continuar, escribe ELIMINAR:';
- if(prompt(advertencia)!=='ELIMINAR')return;
+ const respuesta=prompt(advertencia);
+ if(respuesta===null){toast('Eliminación cancelada. La publicación se conserva.');return;}
+ if(respuesta!=='ELIMINAR'){
+  alert('No se eliminó la publicación. Debes escribir exactamente ELIMINAR en mayúsculas para confirmar.');
+  return;
+ }
+ const confirmacionFinal=confirm(
+  `ÚLTIMA CONFIRMACIÓN\n\n¿Eliminar PERMANENTEMENTE la publicación de ${post.name}?\n\n`+
+  'También se borrará su historial de solicitudes y se intentarán eliminar sus fotografías.\n\n'+
+  'Pulsa Aceptar para ELIMINAR DEFINITIVAMENTE o Cancelar para conservarla.'
+ );
+ if(!confirmacionFinal){toast('Eliminación cancelada. La publicación se conserva.');return;}
  const boton=document.querySelector('.adoption-delete-btn[onclick*="'+id+'"]');
  if(boton)boton.disabled=true;
  try{
