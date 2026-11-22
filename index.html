@@ -140,6 +140,7 @@ html{scroll-padding-top:88px}
 .role-request-status.rechazado{background:#fff0ee;color:#bd3737}
 .role-request-panel .btn{width:100%;max-width:320px}
 
+.adoption-delete-btn{background:#fff0ee;color:#b42335;box-shadow:none;border:1px solid #ffd0cc}.adoption-delete-btn:hover{background:#ffe2df;color:#9b1c2e}
 /* Adopciones conectadas a Supabase */
 .adoption-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:15px}
 .adoption-card{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;box-shadow:var(--shadow)}
@@ -621,7 +622,7 @@ function tarjetaAdopcion(p){
  const propia=usuarioId===p.shelter_id;
  const estado=etiquetaEstadoAdopcion(p.status);
  const estClase=p.status==='adoptado'?' adoptado':p.status==='en_proceso'?' proceso':'';
- return `<article class="adoption-card">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span><h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
+ return `<article class="adoption-card">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span><h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button><button class="btn small adoption-delete-btn" onclick="eliminarPublicacionAdopcion('${escapeAttr(p.id)}')">🗑️ Eliminar publicación</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
 }
 function galeriaEditableAdopcion(p){
  const fotos=fotosDeAdopcion(p);
@@ -700,6 +701,51 @@ async function eliminarFotoAdopcion(idPost,idFoto){
   if(errorArchivo)alert('Se retiró la fotografía de la publicación, pero su archivo puede seguir en Storage. Revisa la consola o solicita una limpieza: '+errorArchivo.message);
   else toast('Fotografía eliminada');
  }catch(error){alert('No se pudo eliminar la fotografía: '+error.message);}
+}
+// Eliminar la publicación (y, por cascada, sus solicitudes y referencias fotográficas).
+// Storage es un sistema separado de Postgres; se limpia después y se informa de fallos.
+async function eliminarPublicacionAdopcion(id){
+ if(currentRole!=='shelter'||!usuarioId)return;
+ const post=publicacionesAdopcion.find(p=>p.id===id&&p.shelter_id===usuarioId);
+ if(!post){alert('No se encontró una publicación propia para eliminar.');return;}
+ const advertencia=`Vas a eliminar definitivamente la publicación de ${post.name}.\n\n`+
+  'También se borrarán todas sus solicitudes de adopción (incluso las aprobadas) y las referencias de sus fotografías.\n'+
+  'Las imágenes del almacenamiento se intentarán eliminar. Esta acción no se puede deshacer.\n\n'+
+  'Para continuar, escribe ELIMINAR:';
+ if(prompt(advertencia)!=='ELIMINAR')return;
+ const boton=document.querySelector('.adoption-delete-btn[onclick*="'+id+'"]');
+ if(boton)boton.disabled=true;
+ try{
+  // Comprobar el propietario en Supabase; no confiar solo en el botón visible.
+  const {data:actual,error:consultaError}=await supabaseClient.from('adoption_posts')
+   .select('id,name,shelter_id,adoption_photos(image_path)')
+   .eq('id',id).eq('shelter_id',usuarioId).single();
+  if(consultaError||!actual)throw Error('No se pudo verificar la publicación o ya fue eliminada.');
+  const rutas=(actual.adoption_photos||[]).map(f=>f.image_path)
+   .filter(r=>typeof r==='string'&&r.startsWith(`${usuarioId}/adopciones/${id}/`));
+  const rutasOmitidas=(actual.adoption_photos||[]).length-rutas.length;
+  const {data:eliminadas,error:errorBorrado}=await supabaseClient.from('adoption_posts')
+   .delete().eq('id',id).eq('shelter_id',usuarioId).select('id');
+  if(errorBorrado)throw errorBorrado;
+  if(!eliminadas?.length)throw Error('No se eliminó la publicación. Comprueba los permisos.');
+  let pendientes=rutasOmitidas;
+  // Borrar archivos después de confirmar la eliminación de la publicación.
+  if(rutas.length){
+   const {data:eliminados,error:errorStorage}=await supabaseClient.storage.from('pet-photos').remove(rutas);
+   if(errorStorage){console.error('Limpieza pendiente de fotografías de adopción:',rutas,errorStorage);pendientes+=rutas.length;}
+   else if(Array.isArray(eliminados)){
+    const borrados=new Set(eliminados.map(x=>x.name));
+    const noConfirmados=rutas.filter(r=>!borrados.has(r));
+    // Algunas versiones de Storage devuelven nombres relativos o datos distintos;
+    // comprobar el resultado sin asumir que implica necesariamente un fallo.
+    if(noConfirmados.length)console.info('Verifica en Storage si todos los archivos fueron retirados:',noConfirmados);
+   }
+  }
+  await cargarAdopciones();
+  if(pendientes)alert(`Publicación eliminada, pero ${pendientes} archivo(s) podrían permanecer en Storage. Revisa el bucket pet-photos antes de limpiar manualmente.`);
+  else toast('Publicación eliminada correctamente');
+ }catch(error){console.error('Error al eliminar publicación:',error);alert('No se pudo eliminar la publicación: '+error.message);}
+ finally{if(boton)boton.disabled=false;}
 }
 function abrirSolicitudAdopcion(id){
  const p=publicacionesAdopcion.find(x=>x.id===id);
