@@ -165,6 +165,15 @@ html{scroll-padding-top:88px}
 .adoption-upload-help{font-size:12px;color:var(--muted);line-height:1.5}
 @media(max-width:600px){.adoption-card-top{height:215px}}
 
+
+/* Eventos y campañas reales de albergues */
+.events-head{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:17px}
+.events-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.event-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:18px;box-shadow:var(--shadow);overflow-wrap:anywhere}
+.event-card h3{margin:9px 0;font-size:19px}.event-card p{font-size:13px;line-height:1.55;color:var(--muted);white-space:pre-wrap}
+.event-meta{font-size:13px;font-weight:700;margin:7px 0}.event-state{font-size:11px;font-weight:800;border-radius:20px;padding:5px 9px;background:#e9f8f0;color:#218357}
+.event-state.cancelado{background:#fff0ee;color:#b42335}.event-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+@media(max-width:650px){.events-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -288,6 +297,7 @@ let mensajesNoLeidos = 0;
 let noLeidosPorConversacion = {};
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
+let eventosPatitas = [];
 
 async function cargarMascotas() {
   const { data, error } = await supabaseClient
@@ -480,10 +490,10 @@ function renderNav() {
 }
 function abrirMenuExtra(){
   const rutas=currentRole==='owner'
-    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
+    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['📅','Eventos','Eventos'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
     : currentRole==='shelter'
-      ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['✦','Comunidad','Comunidad']]
-      : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🎁','Promociones','Promociones']];
+      ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['📅','Eventos','Campañas'],['✦','Comunidad','Comunidad']]
+      : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['📅','Eventos','Eventos'],['🎁','Promociones','Promociones']];
   document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong>${pagina==='Mensajes'?'<span class="chat-unread-badge hidden" data-unread-count></span>':''}<span>›</span></button>`).join('')}</div></div></div>`;
   actualizarIndicadoresChat();
 }
@@ -502,7 +512,7 @@ function portadaPatitas() {
     ${acceso('banner-orange','📈','Reporte estadístico','Consulta el movimiento de tu negocio.','Ver reporte','Mi negocio','📊 🐶')}
     ${acceso('banner-gold','🛍️','Productos y servicios','Mantén actualizado tu catálogo de productos.','Ver catálogo','Productos y servicios','🥣 🧸')}
     ${acceso('banner-peach','📩','Pedidos de clientes','Revisa el interés de nuevos clientes.','Ver pedidos','Solicitudes','🐱 📋')}
-    </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button></div>`;
+    </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button></div>`;
   return `<section class="screen-intro"><span class="tiny-kicker">TODO PARA EL BIENESTAR DE TU MASCOTA</span><h2>¡Hola, ${escapeHtml(currentUser || 'Petlover')}! <span class="hello-paw">🐾</span></h2><p>Encuentra, adopta, cuida y sé parte del cambio.</p></section>
   <div class="feature-stack">
     ${acceso('banner-orange','🐾','Albergues y adopciones','Encuentra un hogar para una mascota.','Buscar mascotas','Adopciones','🐶 🐱')}
@@ -511,9 +521,9 @@ function portadaPatitas() {
   </div>
   <div class="home-section-heading"><div><span class="tiny-kicker">TU COMUNIDAD</span><h2>Tus compañeros</h2></div><button type="button" class="text-link" onclick="navigate('Mis mascotas')">Ver todas ›</button></div>
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
-  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button></div>`;
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button></div>`;
 }
-function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
+function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
 let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':(activePage.includes('producto')?'<button class="btn" onclick="openCreate()">＋ Agregar producto</button>':'')}</div>`;
 if(activePage==='inicio'){
@@ -557,6 +567,8 @@ if(activePage==='inicio'){
   `;
 }else if(activePage.includes('producto')||activePage.includes('servicio')||activePage.includes('promocion')){
  html+=`<div class="toolbar"><input id="productSearch" placeholder="Buscar productos o servicios..." oninput="filterProducts()"><select><option>Todas las categorías</option><option>Alimentos</option><option>Salud</option><option>Accesorios</option></select></div><div class="panel" id="productResults">${products.map(productRow).join('')}</div>`;
+}else if(activePage==='eventos'||activePage==='campañas'){
+ html+=vistaEventos();
 }else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')){
  html+=`<div class="panel"><div class="panel-head"><h2>${currentRole==='shelter'?'Solicitudes y apoyo':'Solicitudes recibidas'}</h2><span class="tag">${requests.length} pendientes</span></div>${requests.map((r,i)=>`<div class="product-row"><div class="product-left"><div class="product-emoji">${i===0?'🐾':'💌'}</div><div><strong>${r}</strong><small>Recibida recientemente · Pendiente de revisión</small></div></div><button class="btn light small" onclick="toast('Solicitud marcada para revisión')">Revisar</button></div>`).join('')}</div>`;
 }else if(activePage==='mi negocio'){
@@ -579,6 +591,103 @@ if(activePage==='inicio'){
 }
 root.innerHTML=html;actualizarIndicadoresChat();if(activePage==='mi perfil'){cargarDatosPerfil();cargarSolicitudRol();}}
 
+
+// Eventos y campañas publicados por albergues aprobados (RLS también controla los permisos).
+function vistaEventos(){
+ return `<div class="panel"><div class="events-head"><div><h2>📅 Eventos y campañas</h2><p class="muted">Jornadas de adopción, vacunación y actividades solidarias de albergues.</p></div>${currentRole==='shelter'?'<button class="btn small" type="button" onclick="abrirFormularioEvento()">＋ Crear evento</button>':''}</div></div>
+ <div id="eventosResultados" class="empty">Cargando eventos...</div>`;
+}
+function fechaEventoTexto(valor){
+ return new Date(valor).toLocaleString('es-PE',{dateStyle:'long',timeStyle:'short'});
+}
+function tarjetaEvento(e){
+ const propio=e.shelter_id===usuarioId;
+ const cancelado=e.status==='cancelado';
+ return `<article class="event-card"><span class="event-state ${cancelado?'cancelado':''}">${cancelado?'Cancelado':'Publicado'}</span>
+ <h3>${escapeHtml(e.title)}</h3>
+ <div class="event-meta">📅 ${escapeHtml(fechaEventoTexto(e.starts_at))}</div>
+ <div class="event-meta">📍 ${escapeHtml(e.location)}</div>
+ <p>${escapeHtml(e.description||'Sin descripción adicional.')}</p>
+ ${propio&&currentRole==='shelter'?`<div class="event-actions"><button class="btn light small" type="button" onclick="abrirFormularioEvento('${escapeAttr(e.id)}')">Editar</button>${!cancelado?`<button class="btn outline small" type="button" onclick="cancelarEvento('${escapeAttr(e.id)}')">Cancelar evento</button>`:''}<button class="btn outline small" type="button" onclick="eliminarEvento('${escapeAttr(e.id)}')">Eliminar</button></div>`:''}
+ </article>`;
+}
+async function cargarEventos(){
+ const destino=document.getElementById('eventosResultados');
+ if(!destino||!['eventos','campañas'].includes(activePage))return;
+ try{
+  const {data,error}=await supabaseClient.from('events')
+   .select('id,shelter_id,title,description,location,starts_at,status')
+   .order('starts_at',{ascending:true}).limit(100);
+  if(error)throw error;
+  eventosPatitas=data||[];
+  if(!['eventos','campañas'].includes(activePage)||document.getElementById('eventosResultados')!==destino)return;
+  destino.className='';
+  destino.innerHTML=eventosPatitas.length?`<div class="events-grid">${eventosPatitas.map(tarjetaEvento).join('')}</div>`:'<div class="panel empty">Todavía no hay eventos publicados.</div>';
+ }catch(error){
+  console.error('Error al cargar eventos:',error);
+  if(document.getElementById('eventosResultados')===destino){destino.className='panel empty';destino.textContent='No se pudieron cargar los eventos. Comprueba que la tabla events esté configurada en Supabase.';}
+ }
+}
+function abrirFormularioEvento(id=''){
+ if(currentRole!=='shelter'||!usuarioId)return;
+ const e=id?eventosPatitas.find(x=>x.id===id&&x.shelter_id===usuarioId):null;
+ if(id&&!e)return;
+ // datetime-local necesita la hora local del dispositivo, no UTC.
+ const localFecha=e?(()=>{const d=new Date(e.starts_at);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);})():'';
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>${e?'Editar evento':'Publicar evento'}</h2><button class="close" type="button" onclick="closeModal()">✕</button></div>
+ <form onsubmit="guardarEvento(event,'${escapeAttr(id)}')">
+ <div class="field"><label for="eventoTitulo">Título</label><input id="eventoTitulo" required maxlength="120" value="${escapeAttr(e?.title||'')}" placeholder="Ej.: Jornada de adopción"></div>
+ <div class="field"><label for="eventoFecha">Fecha y hora</label><input id="eventoFecha" type="datetime-local" required value="${escapeAttr(localFecha)}"></div>
+ <div class="field"><label for="eventoLugar">Lugar</label><input id="eventoLugar" required maxlength="200" value="${escapeAttr(e?.location||'')}" placeholder="Distrito, dirección o punto de encuentro"></div>
+ <div class="field"><label for="eventoDescripcion">Descripción</label><textarea id="eventoDescripcion" maxlength="2000" rows="4" placeholder="¿De qué trata el evento?">${escapeHtml(e?.description||'')}</textarea></div>
+ <button class="btn" type="submit" style="width:100%">${e?'Guardar cambios':'Publicar evento'}</button>
+ </form></div></div>`;
+}
+async function guardarEvento(event,id){
+ event.preventDefault();
+ if(currentRole!=='shelter'||!usuarioId)return;
+ const form=event.currentTarget;
+ const title=form.querySelector('#eventoTitulo').value.trim();
+ const location=form.querySelector('#eventoLugar').value.trim();
+ const description=form.querySelector('#eventoDescripcion').value.trim();
+ const fecha=form.querySelector('#eventoFecha').value;
+ const fechaDate=new Date(fecha);
+ if(!title||title.length>120||!location||location.length>200||description.length>2000||!fecha||Number.isNaN(fechaDate.getTime())){alert('Revisa los datos del evento.');return;}
+ if(!id&&fechaDate.getTime()<Date.now()){alert('La fecha del evento debe ser futura.');return;}
+ const boton=event.submitter;if(boton)boton.disabled=true;
+ try{
+  const {data:auth,error:authError}=await supabaseClient.auth.getUser();
+  if(authError||auth.user?.id!==usuarioId)throw Error('Tu sesión no está disponible.');
+  const campos={title,location,description:description||null,starts_at:fechaDate.toISOString()};
+  let error;
+  if(id){
+   const resultado=await supabaseClient.from('events').update(campos).eq('id',id).eq('shelter_id',usuarioId).select('id');
+   error=resultado.error;if(!error&&!resultado.data?.length)throw Error('No tienes permiso para editar ese evento.');
+  }else{
+   const resultado=await supabaseClient.from('events').insert({...campos,shelter_id:usuarioId,status:'publicado'});
+   error=resultado.error;
+  }
+  if(error)throw error;
+  closeModal();toast(id?'Evento actualizado':'Evento publicado');await cargarEventos();
+ }catch(error){alert('No se pudo guardar el evento: '+error.message);}
+ finally{if(boton)boton.disabled=false;}
+}
+async function cancelarEvento(id){
+ if(currentRole!=='shelter'||!confirm('¿Deseas cancelar este evento?'))return;
+ try{
+  const {data,error}=await supabaseClient.from('events').update({status:'cancelado'}).eq('id',id).eq('shelter_id',usuarioId).select('id');
+  if(error)throw error;if(!data?.length)throw Error('No se pudo cancelar.');
+  toast('Evento cancelado');await cargarEventos();
+ }catch(error){alert('Error al cancelar: '+error.message);}
+}
+async function eliminarEvento(id){
+ if(currentRole!=='shelter'||!confirm('¿Eliminar definitivamente este evento?'))return;
+ try{
+  const {data,error}=await supabaseClient.from('events').delete().eq('id',id).eq('shelter_id',usuarioId).select('id');
+  if(error)throw error;if(!data?.length)throw Error('No se pudo eliminar.');
+  toast('Evento eliminado');await cargarEventos();
+ }catch(error){alert('Error al eliminar: '+error.message);}
+}
 
 // Adopciones: datos reales desde adoption_posts y adoption_requests.
 function etiquetaEstadoAdopcion(estado){return ({disponible:'Disponible',en_proceso:'En proceso',adoptado:'Adoptado'})[estado]||estado;}
