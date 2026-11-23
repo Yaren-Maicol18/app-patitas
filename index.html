@@ -562,11 +562,22 @@ if(activePage==='inicio'){
 }else if(activePage==='mi negocio'){
  html+=`<div class="panel"><h2>📊 Reporte de negocio</h2><p class="muted">El panel estadístico detallado se implementará en una próxima etapa. Tu catálogo y solicitudes siguen disponibles desde el menú inferior.</p><button class="btn" onclick="navigate('Productos y servicios')">Ir a mis productos</button></div>`;
 }else if(activePage.includes('perfil')||activePage.includes('negocio')){
- html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div><div class="panel"><h2>Información de cuenta</h2><div class="field"><label>Nombre</label><input value="${escapeAttr(currentUser)}" readonly></div><div class="field"><label>Tipo de cuenta</label><input value="${roleNames[currentRole]}" disabled></div><p class="muted" style="font-size:13px">La edición de perfil estará disponible en una próxima etapa.</p></div><div id="roleRequestArea" class="panel role-request-panel" aria-live="polite"><h2>🏡 Cuenta especial</h2><p>Consultando tu solicitud...</p></div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
+ html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div>
+  <div class="panel"><h2>Información de cuenta</h2>
+    <form onsubmit="guardarPerfil(event)" id="formEditarPerfil">
+      <div class="field"><label for="editarNombre">Nombre completo</label><input id="editarNombre" type="text" value="${escapeAttr(currentUser)}" maxlength="100" required autocomplete="name"></div>
+      <div class="field"><label for="editarTelefono">Teléfono (opcional)</label><input id="editarTelefono" type="tel" maxlength="25" autocomplete="tel" placeholder="Ej.: +51 987 654 321"></div>
+      <div class="field"><label>Tipo de cuenta</label><input value="${escapeAttr(roleNames[currentRole])}" disabled></div>
+      <p class="muted" style="font-size:12px">El tipo de cuenta requiere autorización y no se puede cambiar desde aquí.</p>
+      <button class="btn" type="submit" id="botonGuardarPerfil">Guardar cambios</button>
+    </form>
+  </div>
+  <div id="roleRequestArea" class="panel role-request-panel" aria-live="polite"><h2>🏡 Cuenta especial</h2><p>Consultando tu solicitud...</p></div>
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
 }else{
  html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
 }
-root.innerHTML=html;actualizarIndicadoresChat();if(activePage==='mi perfil')cargarSolicitudRol();}
+root.innerHTML=html;actualizarIndicadoresChat();if(activePage==='mi perfil'){cargarDatosPerfil();cargarSolicitudRol();}}
 
 
 // Adopciones: datos reales desde adoption_posts y adoption_requests.
@@ -783,6 +794,50 @@ async function evaluarSolicitudAdopcion(id,estado){
   if(error)throw error;if(!data?.length)throw Error('La solicitud ya fue procesada o no tienes permiso.');
   toast('Solicitud '+(estado==='aprobada'?'aprobada':'rechazada'));await cargarAdopciones();
  }catch(error){alert('No se pudo actualizar la solicitud: '+error.message);}
+}
+
+// Edición segura de datos básicos: solo modifica full_name y phone del usuario autenticado.
+async function cargarDatosPerfil() {
+  const id = usuarioId;
+  const form = document.getElementById('formEditarPerfil');
+  if (!id || !form || activePage !== 'mi perfil') return;
+  const {data, error} = await supabaseClient.from('profiles')
+    .select('full_name,phone').eq('id',id).single();
+  if (error) {console.error('No se pudo cargar el perfil:',error.message);return;}
+  if (id !== usuarioId || document.getElementById('formEditarPerfil') !== form) return;
+  form.querySelector('#editarNombre').value = data.full_name || currentUser || '';
+  form.querySelector('#editarTelefono').value = data.phone || '';
+}
+async function guardarPerfil(event) {
+  event.preventDefault();
+  const id = usuarioId;
+  const form = event.currentTarget;
+  const nombre = form.querySelector('#editarNombre').value.trim();
+  const telefono = form.querySelector('#editarTelefono').value.trim();
+  const boton = form.querySelector('#botonGuardarPerfil');
+  if (!id) {alert('Debes iniciar sesión.');return;}
+  if (!nombre || nombre.length > 100) {alert('Escribe un nombre de hasta 100 caracteres.');return;}
+  if (telefono.length > 25 || (telefono && !/^[0-9+().\s-]+$/.test(telefono))) {
+    alert('Revisa el teléfono. Usa solo números, espacios y los signos + ( ) . -');return;
+  }
+  boton.disabled = true;
+  try {
+    const {data:authData,error:authError} = await supabaseClient.auth.getUser();
+    if (authError || authData.user?.id !== id) throw Error('Tu sesión cambió. Vuelve a ingresar.');
+    const {data,error} = await supabaseClient.from('profiles')
+      .update({full_name:nombre,phone:telefono || null})
+      .eq('id',id).select('id,full_name,phone').single();
+    if (error) throw error;
+    if (usuarioId !== id) return;
+    currentUser = data.full_name;
+    document.getElementById('sideName').textContent = currentUser;
+    toast('Perfil actualizado correctamente');
+    if (activePage === 'mi perfil') renderPage();
+  } catch(error) {
+    alert('No se pudo guardar el perfil: ' + error.message);
+  } finally {
+    boton.disabled = false;
+  }
 }
 
 // Solicitud de rol: una solicitud por usuario, revisada por un administrador.
