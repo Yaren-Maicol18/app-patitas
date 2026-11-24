@@ -284,6 +284,7 @@ html{scroll-padding-top:88px}
         </select>
       </div>
 
+      <p class="muted" style="font-size:12px;line-height:1.5">¿Ya tienes una cuenta? Usa «Volver a ingresar». Por seguridad, el registro no confirma si un correo pertenece a otra persona.</p>
       <button class="btn" style="width:100%" type="submit">
         Registrarme
       </button>
@@ -382,32 +383,50 @@ async function registrarUsuario(event) {
       password: contrasena,
       options: {
         data: {
-          full_name: nombre
+          full_name: nombre,
+          requested_role: tipo // Preferencia de registro; NO concede permisos.
         }
       }
     });
     if (error) throw error;
-    if (!data.user) {
-      alert('No se pudo completar el registro.');
-      return;
-    }
-    if (tipo !== 'dueno') {
-      alert(
-        'Tu cuenta se ha creado como dueño de mascota. ' +
-        'Después de confirmar tu correo e iniciar sesión, ' +
-        'podrás enviar tu solicitud para ser albergue o negocio PET.'
-      );
-    } else {
-      alert('Registro recibido. Revisa tu correo para confirmar tu cuenta.');
-    }
+    // Supabase puede devolver un usuario ofuscado cuando el correo ya existe.
+    // No debemos revelar a terceros si ese correo está registrado.
+    alert('Si el correo puede registrarse, recibirás instrucciones para confirmar la cuenta. ' +
+          'Si ya tienes una cuenta, ingresa con ella. ' +
+          'Si seleccionaste Albergue o Negocio PET, la solicitud se enviará ' +
+          'automáticamente después de confirmar el correo e iniciar sesión.');
     showLogin();
   } catch (error) {
-    alert('Error al registrarse: ' + error.message);
+    const mensaje = /already registered|already exists|user already/i.test(error.message || '')
+      ? 'Si ya tienes una cuenta, inicia sesión con ella. Si no puedes acceder, utiliza la recuperación de contraseña.'
+      : 'No se pudo completar el registro: ' + error.message;
+    alert(mensaje);
   } finally {
     if (boton) boton.disabled = false;
   }
 }
 function chooseRole(role){currentRole=role;document.querySelectorAll('.role-option').forEach(b=>b.classList.toggle('active',b.dataset.role===role))}
+
+// Registrar una solicitud especial automáticamente tras el primer inicio de sesión.
+// requested_role es una PREFERENCIA editable; la autorización real se basa en
+// profiles.user_type + las políticas RLS y siempre exige revisión administrativa.
+async function tramitarRolSeleccionadoEnRegistro(user, tipoActual) {
+  const rol = user?.user_metadata?.requested_role;
+  if (tipoActual !== 'dueno' || !['albergue','negocio'].includes(rol)) return;
+  if (!user.email_confirmed_at && !user.confirmed_at) return;
+  const {data: existente, error: consultaError} = await supabaseClient
+    .from('role_requests').select('id,status,requested_role')
+    .eq('user_id', user.id).maybeSingle();
+  if (consultaError) throw consultaError;
+  if (existente) return; // No duplicar solicitudes ni reemplazar una anterior.
+  const {error} = await supabaseClient.from('role_requests').insert({
+    user_id: user.id,
+    requested_role: rol,
+    status: 'pendiente'
+  });
+  if (error && error.code !== '23505') throw error;
+  if (!error) toast('Solicitud de cuenta especial enviada para revisión');
+}
 async function login(e) {
   e.preventDefault();
   const correo = document.getElementById('loginName').value.trim();
@@ -444,6 +463,13 @@ async function login(e) {
     document.getElementById('sideName').textContent = currentUser;
     document.getElementById('sideRole').textContent = roleNames[currentRole];
     document.getElementById('sideAvatar').textContent = roleIcons[currentRole];
+    // Un error al registrar la solicitud no debe impedir entrar a Patitas.
+    try {
+      await tramitarRolSeleccionadoEnRegistro(data.user, perfil.user_type);
+    } catch (solicitudError) {
+      console.error('No se pudo registrar automáticamente la solicitud:', solicitudError);
+      toast('Tu cuenta está activa, pero la solicitud especial no pudo enviarse. Revisa Mi perfil.');
+    }
     conversacionActivaId = null;
     activePage = 'inicio';
     renderNav();
