@@ -184,6 +184,14 @@ html{scroll-padding-top:88px}
 .donation-state.cerrada{background:#edf0f2;color:#58636d}.donation-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
 .donation-info{font-size:12px;color:var(--muted);margin:10px 0}
 @media(max-width:650px){.donation-grid{grid-template-columns:1fr}}
+/* Catálogo de negocios PET */
+.catalog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.catalog-card{background:white;border:1px solid var(--line);border-radius:17px;overflow:hidden}
+.catalog-image{height:190px;display:grid;place-items:center;background:#fff2e2;font-size:56px}
+.catalog-image img{width:100%;height:100%;object-fit:contain}
+.catalog-body{padding:16px}.catalog-body h3{margin:8px 0}.catalog-body p{font-size:13px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.catalog-controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+@media(max-width:650px){.catalog-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -344,12 +352,7 @@ async function cargarMascotas() {
     renderPage();
   }
 }
-let products=[
- {name:'Alimento premium',category:'Alimentos',price:'S/ 85.00',emoji:'🥣'},
- {name:'Consulta veterinaria',category:'Salud',price:'S/ 50.00',emoji:'🩺'},
- {name:'Kit de juguetes',category:'Accesorios',price:'S/ 35.00',emoji:'🧸'},
- {name:'Servicio de grooming',category:'Cuidado',price:'S/ 45.00',emoji:'🛁'}
-];
+let products=[]; // Catálogo real cargado desde Supabase
 let requests=['Solicitud de adopción de Max','Consulta sobre campaña de donación','Nueva consulta de servicio'];
 function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover'}
 function showLogin(role='owner'){hideViews();document.getElementById('loginView').classList.remove('hidden');chooseRole(role)}
@@ -534,9 +537,9 @@ function portadaPatitas() {
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
   <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
 }
-function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='donaciones')cargarDonaciones();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
+function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='donaciones')cargarDonaciones();if(esPaginaCatalogo())cargarCatalogo();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
-let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':(activePage.includes('producto')?'<button class="btn" onclick="openCreate()">＋ Agregar producto</button>':'')}</div>`;
+let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':''}</div>`;
 if(activePage==='inicio'){
  html+=portadaPatitas();
 }else if(activePage==='perdidas'){
@@ -577,7 +580,7 @@ if(activePage==='inicio'){
     </div>
   `;
 }else if(activePage.includes('producto')||activePage.includes('servicio')||activePage.includes('promocion')){
- html+=`<div class="toolbar"><input id="productSearch" placeholder="Buscar productos o servicios..." oninput="filterProducts()"><select><option>Todas las categorías</option><option>Alimentos</option><option>Salud</option><option>Accesorios</option></select></div><div class="panel" id="productResults">${products.map(productRow).join('')}</div>`;
+ html+=vistaCatalogo();
 }else if(activePage==='eventos'||activePage==='campañas'){
  html+=vistaEventos();
 }else if(activePage==='donaciones'){
@@ -1261,7 +1264,8 @@ const esMiMascota = petId &&
 function feed(emoji,title,desc){return `<div class="feed-item"><div class="emoji">${emoji}</div><div><strong>${title}</strong><p>${desc}</p></div></div>`}
 function productRow(p){return `<div class="product-row"><div class="product-left"><div class="product-emoji">${p.emoji}</div><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.category)}</small></div></div><span class="price">${p.price}</span></div>`}
 function openCreate() {
-  const isPet = currentRole !== 'business';
+  if(currentRole==='business'){abrirFormularioCatalogo();return;}
+  const isPet = true;
   document.getElementById('modalRoot').innerHTML = `
     <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
       <div class="modal">
@@ -1424,17 +1428,7 @@ if (error) throw error;
         toast('¡Mascota guardada en Supabase!');
       }
       await cargarMascotas();    } else {
-      const detail =
-        document.getElementById('newDetail').value.trim();
-      const price =
-        document.getElementById('newPrice').value.trim();
-        products.unshift({
-        name,
-        category: detail,
-        price,
-        emoji: '🛍️'
-      });
-      toast('¡Producto agregado temporalmente!');
+      throw new Error('Usa el formulario del catálogo real.');
     }
     closeModal();
     renderPage();
@@ -1688,7 +1682,7 @@ async function editarMascota(petId) {
     alert('Error al editar mascota: ' + error.message);
   }
 }
-function filterProducts(){let q=(document.getElementById('productSearch')?.value||'').toLowerCase();let list=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(q));document.getElementById('productResults').innerHTML=list.length?list.map(productRow).join(''):'<div class="empty">No encontramos resultados.</div>'}
+function filterProducts(){mostrarCatalogo();}
 
 // ===== AVISOS DE MASCOTAS PERDIDAS / ENCONTRADAS =====
 let avisosPerdidas = [];
@@ -2139,6 +2133,109 @@ function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function escapeAttr(s){return escapeHtml(s)}
+
+// === CATÁLOGO REAL DE NEGOCIOS PET ===
+const categoriasCatalogo=['Alimentos','Salud','Accesorios','Higiene','Servicios','Otros'];
+let catalogoPatitas=[];
+function esPaginaCatalogo(){return ['productos y servicios','servicios y productos'].includes(activePage);}
+function vistaCatalogo(){
+ return `<div class="panel" style="margin-bottom:15px"><div class="panel-head"><div><h2>🛍️ Productos y servicios PET</h2><p class="muted">Publicaciones de negocios autorizados. Patitas no procesa compras ni pagos.</p></div>${currentRole==='business'?'<button type="button" class="btn small" onclick="abrirFormularioCatalogo()">＋ Publicar</button>':''}</div>
+ <div class="toolbar"><input id="productSearch" placeholder="Buscar productos y servicios" oninput="filterProducts()"><select id="catalogKind" onchange="filterProducts()"><option value="">Productos y servicios</option><option value="producto">Productos</option><option value="servicio">Servicios</option></select></div></div>
+ <div id="productResults" class="panel empty" aria-live="polite">Cargando catálogo...</div>`;
+}
+function imagenCatalogo(f){
+ if(!f.image_path)return '';
+ return supabaseClient.storage.from('business-photos').getPublicUrl(f.image_path).data.publicUrl;
+}
+function tarjetaCatalogo(f){
+ const propio=currentRole==='business'&&f.business_id===usuarioId;
+ const foto=imagenCatalogo(f);
+ return `<article class="catalog-card"><div class="catalog-image">${foto?`<img src="${escapeAttr(foto)}" alt="${escapeAttr(f.name)}" loading="lazy">`:'🛍️'}</div><div class="catalog-body"><span class="tag">${escapeHtml(f.kind==='servicio'?'Servicio':'Producto')}</span> ${f.status==='oculto'?'<span class="tag" style="background:#e9edf0;color:#45515b">Oculto</span>':''}
+ <h3>${escapeHtml(f.name)}</h3><p><strong>${escapeHtml(f.category)}</strong></p><p>${escapeHtml(f.description)}</p>
+ <strong class="price">S/ ${Number(f.price).toFixed(2)}</strong>
+ ${propio?`<div class="catalog-controls"><button class="btn light small" onclick="abrirFormularioCatalogo('${escapeAttr(f.id)}')">Editar</button><button class="btn outline small" onclick="cambiarEstadoCatalogo('${escapeAttr(f.id)}')">${f.status==='oculto'?'Mostrar':'Ocultar'}</button><button class="btn outline small" onclick="eliminarCatalogo('${escapeAttr(f.id)}')">Eliminar</button></div>`:''}
+ </div></article>`;
+}
+function mostrarCatalogo(){
+ const destino=document.getElementById('productResults');if(!destino)return;
+ const q=(document.getElementById('productSearch')?.value||'').trim().toLowerCase();
+ const kind=document.getElementById('catalogKind')?.value||'';
+ const lista=catalogoPatitas.filter(f=>(!kind||f.kind===kind)&&(!q||(`${f.name} ${f.category} ${f.description}`).toLowerCase().includes(q)));
+ destino.className='';destino.innerHTML=lista.length?`<div class="catalog-grid">${lista.map(tarjetaCatalogo).join('')}</div>`:'<div class="panel empty">No hay productos o servicios para mostrar.</div>';
+}
+async function cargarCatalogo(){
+ const destino=document.getElementById('productResults');if(!destino||!esPaginaCatalogo())return;
+ try{
+  const {data,error}=await supabaseClient.from('business_listings').select('id,business_id,kind,name,category,description,price,image_path,status,created_at').order('created_at',{ascending:false}).limit(100);
+  if(error)throw error;
+  if(document.getElementById('productResults')!==destino||!esPaginaCatalogo())return;
+  catalogoPatitas=data||[];mostrarCatalogo();
+ }catch(err){console.error('Error en catálogo',err);if(document.getElementById('productResults')===destino){destino.className='panel empty';destino.textContent='No se pudo cargar el catálogo. Comprueba la conexión con Supabase.';}}
+}
+function abrirFormularioCatalogo(id){
+ if(currentRole!=='business'){alert('Solo los negocios autorizados pueden publicar.');return;}
+ const f=id?catalogoPatitas.find(x=>x.id===id):null;
+ if(id&&!f)return;
+ const opciones=categoriasCatalogo.map(c=>`<option value="${c}" ${f?.category===c?'selected':''}>${c}</option>`).join('');
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>${f?'Editar publicación':'Publicar producto o servicio'}</h2><button class="close" type="button" onclick="closeModal()">✕</button></div>
+ <form onsubmit="guardarCatalogo(event, '${escapeAttr(id||'')}')">
+ <div class="field"><label>Tipo</label><select id="catalogFormKind"><option value="producto" ${f?.kind==='producto'?'selected':''}>Producto</option><option value="servicio" ${f?.kind==='servicio'?'selected':''}>Servicio</option></select></div>
+ <div class="field"><label>Nombre</label><input id="catalogFormName" required minlength="3" maxlength="120" value="${escapeAttr(f?.name||'')}"></div>
+ <div class="field"><label>Categoría</label><select id="catalogFormCategory">${opciones}</select></div>
+ <div class="field"><label>Precio en soles (S/)</label><input id="catalogFormPrice" type="number" step="0.01" min="0" max="999999.99" required value="${f?escapeAttr(f.price):''}" placeholder="Ej.: 35.00"></div>
+ <div class="field"><label>Descripción</label><textarea id="catalogFormDescription" required minlength="10" maxlength="2000" rows="4">${escapeHtml(f?.description||'')}</textarea></div>
+ <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máx. 5 MB)</label><input id="catalogFormImage" type="file" accept="image/jpeg,image/png,image/webp"></div>
+ <p class="muted" style="font-size:12px">Las fotografías son públicas. No publiques imágenes ni datos personales sin permiso. ${f?.image_path?'Si eliges una nueva fotografía, reemplazará la anterior.':''}</p>
+ <button class="btn" type="submit" style="width:100%">Guardar publicación</button></form></div></div>`;
+}
+async function guardarCatalogo(e,id){
+ e.preventDefault();if(currentRole!=='business')return;
+ const boton=e.submitter;if(boton)boton.disabled=true;
+ let subidaNueva=null;
+ try{
+  const {data:auth,error:authError}=await supabaseClient.auth.getUser();if(authError||!auth?.user||auth.user.id!==usuarioId)throw Error('Inicia sesión nuevamente.');
+  const anterior=id?catalogoPatitas.find(f=>f.id===id&&f.business_id===usuarioId):null;
+  if(id&&!anterior)throw Error('No puedes editar esta publicación.');
+  const archivo=document.getElementById('catalogFormImage').files[0];
+  if(archivo){
+   if(!['image/jpeg','image/png','image/webp'].includes(archivo.type)||archivo.size>5*1024*1024)throw Error('Usa una imagen JPG, PNG o WEBP de máximo 5 MB.');
+   const ext=archivo.type==='image/jpeg'?'jpg':archivo.type==='image/png'?'png':'webp';
+   subidaNueva=`${usuarioId}/${crypto.randomUUID()}.${ext}`;
+   const {error:upError}=await supabaseClient.storage.from('business-photos').upload(subidaNueva,archivo,{contentType:archivo.type});if(upError)throw upError;
+  }
+  const payload={kind:document.getElementById('catalogFormKind').value,name:document.getElementById('catalogFormName').value.trim(),category:document.getElementById('catalogFormCategory').value,price:Number(document.getElementById('catalogFormPrice').value),description:document.getElementById('catalogFormDescription').value.trim(),updated_at:new Date().toISOString()};
+  if(subidaNueva)payload.image_path=subidaNueva;
+  if(payload.name.length<3||payload.description.length<10||!Number.isFinite(payload.price)||payload.price<0)throw Error('Revisa nombre, descripción y precio.');
+  let res;
+  if(id)res=await supabaseClient.from('business_listings').update(payload).eq('id',id).eq('business_id',usuarioId).select('id');
+  else res=await supabaseClient.from('business_listings').insert({...payload,business_id:usuarioId}).select('id');
+  if(res.error)throw res.error;
+  if(!res.data?.length)throw Error('La base de datos no autorizó esta operación.');
+  if(subidaNueva&&anterior?.image_path){const {error:rmError}=await supabaseClient.storage.from('business-photos').remove([anterior.image_path]);if(rmError)console.warn('Foto anterior pendiente de limpieza',rmError);}
+  closeModal();toast(id?'Publicación actualizada':'Publicación guardada en Supabase');await cargarCatalogo();
+ }catch(err){
+  if(subidaNueva){await supabaseClient.storage.from('business-photos').remove([subidaNueva]).catch(()=>{});}
+  alert('No se pudo guardar: '+err.message);
+ }finally{if(boton)boton.disabled=false;}
+}
+async function cambiarEstadoCatalogo(id){
+ if(currentRole!=='business')return;
+ const f=catalogoPatitas.find(x=>x.id===id&&x.business_id===usuarioId);if(!f)return;
+ const status=f.status==='publicado'?'oculto':'publicado';
+ const {data,error}=await supabaseClient.from('business_listings').update({status,updated_at:new Date().toISOString()}).eq('id',id).eq('business_id',usuarioId).select('id');
+ if(error||!data?.length){alert('No se pudo actualizar la publicación: '+(error?.message||'Sin permisos'));return;}
+ toast(status==='oculto'?'Publicación oculta':'Publicación visible');await cargarCatalogo();
+}
+async function eliminarCatalogo(id){
+ if(currentRole!=='business')return;
+ const f=catalogoPatitas.find(x=>x.id===id&&x.business_id===usuarioId);if(!f)return;
+ if(!confirm('¿Eliminar esta publicación de forma permanente?'))return;
+ const {data,error}=await supabaseClient.from('business_listings').delete().eq('id',id).eq('business_id',usuarioId).select('id');
+ if(error||!data?.length){alert('No se pudo eliminar: '+(error?.message||'Sin permisos'));return;}
+ if(f.image_path){const {error:rmError}=await supabaseClient.storage.from('business-photos').remove([f.image_path]);if(rmError)console.warn('Imagen pendiente de limpieza',rmError);}
+ toast('Publicación eliminada');await cargarCatalogo();
+}
+
 showHome();
 </script>
 <script>
