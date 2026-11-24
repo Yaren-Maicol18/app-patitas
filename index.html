@@ -489,7 +489,7 @@ async function enviarRecuperacion(event){
   mensaje.textContent='Enviando solicitud...';
   try{
     const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{
-      redirectTo:'https://yaren-maicol18.github.io/app-patitas/'
+      redirectTo:'https://yaren-maicol18.github.io/app-patitas/?patitas_reset=1'
     });
     if(error)throw error;
     mensaje.textContent='Si el correo tiene una cuenta de Patitas, recibirás instrucciones de recuperación. Revisa también Spam o Correo no deseado.';
@@ -2446,17 +2446,31 @@ showHome();
     SUPABASE_PUBLISHABLE_KEY
   );
   console.log("Patitas: cliente Supabase inicializado");
-  // El enlace de recuperación abre esta misma página de GitHub Pages.
+  // El enlace abre una URL exclusiva de recuperación, incluso desde Gmail en otro dispositivo.
+  // Conservar el indicador en la consulta evita depender solo del evento PASSWORD_RECOVERY:
+  // Supabase puede consumir el fragmento de autenticación durante la inicialización.
+  const parametrosRecuperacion = new URLSearchParams(window.location.search);
+  const enlaceRecuperacion = parametrosRecuperacion.get('patitas_reset') === '1';
   const hashRecuperacion = /(?:^|[&#])type=recovery(?:&|$)/.test(window.location.hash);
+  const errorEnlace = /(?:^|[&#])error(?:=|_code=)/.test(window.location.hash)
+    || parametrosRecuperacion.has('error');
   supabaseClient.auth.onAuthStateChange((evento, sesion) => {
-    if(evento==='PASSWORD_RECOVERY'){
+    if(evento === 'PASSWORD_RECOVERY' || (enlaceRecuperacion && evento === 'SIGNED_IN')){
       mostrarCambioContrasena();
     }
   });
-  // Respaldo si la sesión se restauró antes de que el listener recibiera el evento.
-  if(hashRecuperacion){
-    supabaseClient.auth.getSession().then(({data})=>{
-      if(data?.session)mostrarCambioContrasena();
+  if(enlaceRecuperacion || hashRecuperacion){
+    mostrarCambioContrasena();
+    if(errorEnlace){
+      document.getElementById('resetFeedback').textContent =
+        'Este enlace no es válido o ha expirado. Solicita uno nuevo desde Ingresar.';
+    }
+    // El cliente completa automáticamente la sesión del enlace; no se inicia sesión manualmente.
+    supabaseClient.auth.getSession().then(({data,error}) => {
+      if(error || !data?.session){
+        document.getElementById('resetFeedback').textContent =
+          'No se pudo validar el enlace. Si acabas de abrirlo, vuelve a solicitar otro desde Ingresar.';
+      }
     }).catch(console.error);
   }
 
