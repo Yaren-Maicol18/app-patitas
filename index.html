@@ -198,6 +198,50 @@ html{scroll-padding-top:88px}
 .password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:40px;height:38px;border-radius:9px;display:grid;place-items:center;background:transparent;color:#56636e;box-shadow:none}
 .password-toggle:hover,.password-toggle:focus-visible{background:#fff1e3;color:#b65d0b}
 .password-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* PATITAS: Navegación de mayor contraste (escritorio y móvil) */
+.sidebar{
+  background:#fff4e5;
+  border-right:1px solid #edcba4;
+  box-shadow:2px 0 12px rgba(112,67,20,.06);
+}
+.nav button{
+  color:#33465b;
+  font-weight:800;
+  transition:background .18s ease,color .18s ease;
+}
+.nav button:hover{
+  background:#ffe4c3;
+  color:#a84b04;
+}
+.nav button.active{
+  background:#ffddb0;
+  color:#a54b08;
+  box-shadow:inset 0 0 0 1px #eeb577;
+}
+@media(max-width:850px){
+  .sidebar{
+    background:#fff4e5;
+    border-bottom:1px solid #edcba4;
+  }
+}
+@media(max-width:540px){
+  .sidebar{
+    background:#fff1dd;
+    border-top:2px solid #eab579;
+    box-shadow:0 -6px 22px rgba(106,62,18,.14);
+  }
+  .nav button{
+    color:#35485d;
+    font-weight:800;
+  }
+  .nav button.active{
+    background:#ffd59b;
+    color:#934206;
+    box-shadow:inset 0 0 0 1px #e8ae68;
+  }
+  .nav button.active:after{background:#ce5d07;}
+}
 </style>
 </head>
 <body>
