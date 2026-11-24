@@ -192,6 +192,12 @@ html{scroll-padding-top:88px}
 .catalog-body{padding:16px}.catalog-body h3{margin:8px 0}.catalog-body p{font-size:13px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
 .catalog-controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 @media(max-width:650px){.catalog-grid{grid-template-columns:1fr}}
+/* Mostrar u ocultar contraseña sin modificar su valor */
+.password-wrap{position:relative;width:100%}
+.password-wrap input{padding-right:52px}
+.password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:40px;height:38px;border-radius:9px;display:grid;place-items:center;background:transparent;color:#56636e;box-shadow:none}
+.password-toggle:hover,.password-toggle:focus-visible{background:#fff1e3;color:#b65d0b}
+.password-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -231,12 +237,13 @@ html{scroll-padding-top:88px}
   <input id="loginName" type="email"
          placeholder="ejemplo@correo.com" required>
 </div>
-  <div class="field"><label>Contraseña</label><input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" required></div>
-   <div class="field"><label>Tipo de cuenta</label><div class="role-select">
-    <button type="button" class="role-option active" data-role="owner" onclick="chooseRole('owner')">🐕<br>Dueño</button>
-    <button type="button" class="role-option" data-role="shelter" onclick="chooseRole('shelter')">🏡<br>Albergue</button>
-    <button type="button" class="role-option" data-role="business" onclick="chooseRole('business')">🛍️<br>Negocio PET</button>
-   </div></div>
+  <div class="field"><label for="loginPassword">Contraseña</label>
+    <div class="password-wrap"><input id="loginPassword" type="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+      <button class="password-toggle" type="button" onclick="alternarContrasena('loginPassword',this)" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </div>
    <button class="btn" style="width:100%;margin-top:10px">Ingresar a Patitas</button>
   </form>
 <p class="muted" style="text-align:center;margin-top:18px">
@@ -269,11 +276,13 @@ html{scroll-padding-top:88px}
         <input id="registerEmail" type="email" required>
       </div>
       <div class="field">
-        <label>Contraseña</label>
-        <input id="registerPassword"
-               type="password"
-               minlength="6"
-               required>
+        <label for="registerPassword">Contraseña</label>
+        <div class="password-wrap">
+          <input id="registerPassword" type="password" minlength="6" autocomplete="new-password" required>
+          <button class="password-toggle" type="button" onclick="alternarContrasena('registerPassword',this)" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
       <div class="field">
         <label>Tipo de cuenta</label>
@@ -356,10 +365,23 @@ async function cargarMascotas() {
 let products=[]; // Catálogo real cargado desde Supabase
 let requests=['Solicitud de adopción de Max','Consulta sobre campaña de donación','Nueva consulta de servicio'];
 function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover'}
-function showLogin(role='owner'){hideViews();document.getElementById('loginView').classList.remove('hidden');chooseRole(role)}
+function showLogin(){hideViews();document.getElementById('loginView').classList.remove('hidden')}
 function hideViews(){
   ['homeView','loginView','registerView','dashboardView']
     .forEach(id=>document.getElementById(id).classList.add('hidden'));
+}
+function alternarContrasena(inputId, boton){
+  const campo=document.getElementById(inputId);
+  if(!campo)return;
+  const mostrar=campo.type==='password';
+  campo.type=mostrar?'text':'password';
+  const titulo=mostrar?'Ocultar contraseña':'Mostrar contraseña';
+  boton.setAttribute('aria-label',titulo);
+  boton.setAttribute('title',titulo);
+  boton.setAttribute('aria-pressed',String(mostrar));
+  boton.innerHTML=mostrar
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a15.6 15.6 0 0 1-3.3 3.7M6.2 6.2C3.5 8.2 2 12 2 12s3.5 6 10 6c1.7 0 3.2-.4 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
 }
 function mostrarRegistro(){
   hideViews();
@@ -382,6 +404,9 @@ async function registrarUsuario(event) {
       email: correo,
       password: contrasena,
       options: {
+        // La confirmación debe volver a la ruta del proyecto en GitHub Pages,
+        // no al dominio raíz (que muestra una página 404).
+        emailRedirectTo: 'https://yaren-maicol18.github.io/app-patitas/',
         data: {
           full_name: nombre,
           requested_role: tipo // Preferencia de registro; NO concede permisos.
@@ -405,7 +430,6 @@ async function registrarUsuario(event) {
     if (boton) boton.disabled = false;
   }
 }
-function chooseRole(role){currentRole=role;document.querySelectorAll('.role-option').forEach(b=>b.classList.toggle('active',b.dataset.role===role))}
 
 // Registrar una solicitud especial automáticamente tras el primer inicio de sesión.
 // requested_role es una PREFERENCIA editable; la autorización real se basa en
