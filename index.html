@@ -649,6 +649,7 @@ async function restaurarSesionPatitas(){
     try{await tramitarRolSeleccionadoEnRegistro(user,perfil.user_type);}
     catch(err){console.warn('Solicitud de rol pendiente de comprobación:',err);}
     await cargarMascotas();
+    iniciarCatalogoTiempoReal();
     iniciarNotificacionesChat();
   }catch(err){
     console.warn('No fue posible restaurar automáticamente la sesión:',err);
@@ -705,6 +706,7 @@ async function login(e) {
     renderNav();
     renderPage();
     await cargarMascotas();
+    iniciarCatalogoTiempoReal();
     iniciarNotificacionesChat();
   } catch (error) {
     alert('No se pudo iniciar sesión: ' + error.message);
@@ -717,6 +719,7 @@ async function logout() {
     alert('No se pudo cerrar sesión: ' + error.message);
     return;
   }
+detenerCatalogoTiempoReal();
 currentUser = null;
 usuarioId = null;
 conversacionActivaId = null;
@@ -2398,7 +2401,54 @@ function escapeAttr(s){return escapeHtml(s)}
 // === CATÁLOGO REAL DE NEGOCIOS PET ===
 const categoriasCatalogo=['Alimentos','Salud','Accesorios','Higiene','Servicios','Otros'];
 let catalogoPatitas=[];
+// Actualización del catálogo entre cuentas, sin transmitir datos de productos privados.
+// La tabla catalog_change_signal solo comunica que hay cambios; se vuelve a consultar
+// business_listings con los permisos RLS del usuario conectado.
+let canalCatalogoTiempoReal=null;
+let temporizadorRecargaCatalogo=null;
+let intervaloRespaldoCatalogo=null;
+let secuenciaCargaCatalogo=0;
 function esPaginaCatalogo(){return ['productos y servicios','servicios y productos'].includes(activePage);}
+function programarRecargaCatalogo(){
+  if(!usuarioId||!esPaginaCatalogo()||document.hidden)return;
+  if(temporizadorRecargaCatalogo)clearTimeout(temporizadorRecargaCatalogo);
+  temporizadorRecargaCatalogo=setTimeout(()=>{
+    temporizadorRecargaCatalogo=null;
+    if(usuarioId&&esPaginaCatalogo()&&!document.hidden)cargarCatalogo();
+  },250);
+}
+function iniciarCatalogoTiempoReal(){
+  if(canalCatalogoTiempoReal||!usuarioId)return;
+  try{
+    canalCatalogoTiempoReal=supabaseClient.channel('patitas-catalogo-actualizaciones')
+      .on('postgres_changes',{
+        event:'UPDATE',schema:'public',table:'catalog_change_signal',filter:'id=eq.1'
+      },()=>programarRecargaCatalogo())
+      .subscribe((estado,error)=>{
+        if(estado==='SUBSCRIBED')programarRecargaCatalogo();
+        if(estado==='CHANNEL_ERROR'||estado==='TIMED_OUT')
+          console.warn('Patitas: Realtime del catálogo no disponible, usando actualización periódica.',error||estado);
+      });
+  }catch(error){console.warn('No se pudo activar Realtime del catálogo:',error);}
+  // Respaldo por conexiones móviles inestables y cambios que ocurren sin conexión.
+  if(!intervaloRespaldoCatalogo){
+    intervaloRespaldoCatalogo=setInterval(()=>programarRecargaCatalogo(),45000);
+  }
+}
+function detenerCatalogoTiempoReal(){
+  secuenciaCargaCatalogo++;
+  if(temporizadorRecargaCatalogo){clearTimeout(temporizadorRecargaCatalogo);temporizadorRecargaCatalogo=null;}
+  if(intervaloRespaldoCatalogo){clearInterval(intervaloRespaldoCatalogo);intervaloRespaldoCatalogo=null;}
+  if(canalCatalogoTiempoReal){
+    const canal=canalCatalogoTiempoReal;canalCatalogoTiempoReal=null;
+    supabaseClient.removeChannel(canal).catch(error=>console.warn('No se pudo cerrar el canal de catálogo:',error));
+  }
+  catalogoPatitas=[];
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)programarRecargaCatalogo();
+});
+window.addEventListener('focus',()=>programarRecargaCatalogo());
 function vistaCatalogo(){
  return `<div class="panel" style="margin-bottom:15px"><div class="panel-head"><div><h2>🛍️ Productos y servicios PET</h2><p class="muted">Publicaciones de negocios autorizados. Patitas no procesa compras ni pagos.</p></div>${currentRole==='business'?'<button type="button" class="btn small" onclick="abrirFormularioCatalogo()">＋ Publicar</button>':''}</div>
  <div class="toolbar"><input id="productSearch" placeholder="Buscar productos y servicios" oninput="filterProducts()"><select id="catalogKind" onchange="filterProducts()"><option value="">Productos y servicios</option><option value="producto">Productos</option><option value="servicio">Servicios</option></select></div></div>
@@ -2430,6 +2480,7 @@ function mostrarCatalogo(){
 }
 async function cargarCatalogo(){
  const destino=document.getElementById('productResults');if(!destino||!esPaginaCatalogo())return;
+ const secuencia=++secuenciaCargaCatalogo;
  try{
   let consulta=supabaseClient.from('business_listings')
     .select('id,business_id,kind,name,category,description,price,image_path,status,created_at')
@@ -2441,9 +2492,9 @@ async function cargarCatalogo(){
     : consulta.eq('status','publicado');
   const {data,error}=await consulta;
   if(error)throw error;
-  if(document.getElementById('productResults')!==destino||!esPaginaCatalogo())return;
+  if(secuencia!==secuenciaCargaCatalogo||document.getElementById('productResults')!==destino||!esPaginaCatalogo())return;
   catalogoPatitas=data||[];mostrarCatalogo();
- }catch(err){console.error('Error en catálogo',err);if(document.getElementById('productResults')===destino){destino.className='panel empty';destino.textContent='No se pudo cargar el catálogo. Comprueba la conexión con Supabase.';}}
+ }catch(err){console.error('Error en catálogo',err);if(secuencia===secuenciaCargaCatalogo&&document.getElementById('productResults')===destino){destino.className='panel empty';destino.textContent='No se pudo cargar el catálogo. Comprueba la conexión con Supabase.';}}
 }
 function abrirFormularioCatalogo(id){
  if(currentRole!=='business'){alert('Solo los negocios autorizados pueden publicar.');return;}
