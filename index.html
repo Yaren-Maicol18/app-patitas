@@ -256,6 +256,19 @@ html{scroll-padding-top:88px}
 .auth-help-link{display:block;margin:6px 0 14px auto;background:transparent;border:0;color:#ad5911;font-size:13px;font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:6px;text-align:right}
 .auth-help-link:hover{color:#8e4308}
 .auth-feedback{margin:12px 0;color:#52616b;font-size:13px;line-height:1.5}
+/* Fase 1: legibilidad, clics y estados accesibles */
+.btn:not(.light):not(.outline):not(.adoption-delete-btn){background:#a84b07;color:#fff}
+.btn:not(.light):not(.outline):not(.adoption-delete-btn):hover{background:#853600}
+.role-card{width:100%;display:block;text-align:left;color:var(--ink);font-weight:400;cursor:default}
+.role-card:focus-visible,.nav button:focus-visible,.more-routes button:focus-visible,
+.btn:focus-visible,.role-cta-button:focus-visible,.role-option:focus-visible{outline:3px solid #ba5b09;outline-offset:3px}
+.role-card .role-cta{color:#9b4400;font-size:13px;font-weight:800}
+.role-cta-button{background:transparent;text-align:left;padding:9px 0;border-radius:8px}
+.role-cta-button:hover{text-decoration:underline}
+.nav button[aria-current="page"]{box-shadow:inset 0 0 0 2px #cb7b27}
+button:disabled{opacity:.64;cursor:not-allowed;transform:none!important}
+@media(max-width:540px){.nav button{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -272,9 +285,9 @@ html{scroll-padding-top:88px}
     </section>
     <div class="section-head" id="roles"><div><h2>Una app, tres formas de ayudar</h2><p>Selecciona el perfil que mejor representa tu participación.</p></div></div>
     <section class="grid">
-      <article class="card role-card" onclick="showLogin('owner')"><div class="role-icon">🐕</div><h3>Dueño de mascota</h3><p>Administra el perfil de tus compañeros, descubre adopciones y encuentra productos y servicios.</p><a>Ingresar como dueño →</a></article>
-      <article class="card role-card" onclick="showLogin('shelter')"><div class="role-icon">🏡</div><h3>Albergue</h3><p>Difunde mascotas que buscan hogar, recibe solicitudes y comparte campañas de donación.</p><a>Ingresar como albergue →</a></article>
-      <article class="card role-card" onclick="showLogin('business')"><div class="role-icon">🛍️</div><h3>Negocio PET</h3><p>Publica productos y servicios, muestra promociones y conecta con nuevos clientes.</p><a>Ingresar como negocio →</a></article>
+      <article class="card role-card"><div class="role-icon">🐕</div><h3>Dueño de mascota</h3><p>Administra el perfil de tus compañeros, descubre adopciones y encuentra productos y servicios.</p><button type="button" class="role-cta role-cta-button" onclick="mostrarRegistro('dueno')">Crear cuenta de dueño →</button></article>
+      <article class="card role-card"><div class="role-icon">🏡</div><h3>Albergue</h3><p>Difunde mascotas que buscan hogar, recibe solicitudes y comparte campañas de donación.</p><button type="button" class="role-cta role-cta-button" onclick="mostrarRegistro('albergue')">Solicitar cuenta de albergue →</button></article>
+      <article class="card role-card"><div class="role-icon">🛍️</div><h3>Negocio PET</h3><p>Publica productos y servicios y conecta con la comunidad desde tu catálogo.</p><button type="button" class="role-cta role-cta-button" onclick="mostrarRegistro('negocio')">Solicitar cuenta de negocio →</button></article>
     </section>
     <div class="section-head"><div><h2>¿Qué puedes hacer en Patitas?</h2><p>Las herramientas principales de la comunidad.</p></div></div>
     <section class="grid">
@@ -291,8 +304,8 @@ html{scroll-padding-top:88px}
   <div style="text-align:center;margin:18px 0"><div class="paw" style="margin:auto;width:55px;height:55px;font-size:30px">🐾</div><h1>¡Hola, Petlover!</h1><p class="muted">Ingresa para continuar en Patitas.</p></div>
   <form onsubmit="login(event)">
 <div class="field">
-  <label>Correo electrónico</label>
-  <input id="loginName" type="email"
+  <label for="loginName">Correo electrónico</label>
+  <input id="loginName" type="email" autocomplete="email"
          placeholder="ejemplo@correo.com" required>
 </div>
   <div class="field"><label for="loginPassword">Contraseña</label>
@@ -359,12 +372,12 @@ html{scroll-padding-top:88px}
     <p class="muted">Únete a la comunidad Patitas.</p>
     <form onsubmit="registrarUsuario(event)">
       <div class="field">
-        <label>Nombre completo</label>
-        <input id="registerName" required>
+        <label for="registerName">Nombre completo</label>
+        <input id="registerName" autocomplete="name" maxlength="100" required>
       </div>
       <div class="field">
-        <label>Correo electrónico</label>
-        <input id="registerEmail" type="email" required>
+        <label for="registerEmail">Correo electrónico</label>
+        <input id="registerEmail" type="email" autocomplete="email" required>
       </div>
       <div class="field">
         <label for="registerPassword">Contraseña</label>
@@ -376,7 +389,7 @@ html{scroll-padding-top:88px}
         </div>
       </div>
       <div class="field">
-        <label>Tipo de cuenta</label>
+        <label for="registerRole">Tipo de cuenta</label>
         <select id="registerRole">
           <option value="dueno">Dueño de mascota</option>
           <option value="albergue">Albergue (requiere aprobación)</option>
@@ -454,7 +467,6 @@ async function cargarMascotas() {
   }
 }
 let products=[]; // Catálogo real cargado desde Supabase
-let requests=['Solicitud de adopción de Max','Consulta sobre campaña de donación','Nueva consulta de servicio'];
 function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover';document.getElementById('mobileRole').textContent='';document.getElementById('mobileRole').classList.add('hidden')}
 function showLogin(){hideViews();document.getElementById('loginView').classList.remove('hidden')}
 function hideViews(){
@@ -495,7 +507,10 @@ async function enviarRecuperacion(event){
     mensaje.textContent='Si el correo tiene una cuenta de Patitas, recibirás instrucciones de recuperación. Revisa también Spam o Correo no deseado.';
   }catch(error){
     console.error('No se pudo enviar recuperación:',error);
-    mensaje.textContent='No pudimos procesar la solicitud ahora. Inténtalo más tarde.';
+    const limitado=error?.status===429||/rate.limit|too many requests|over_email_send/i.test(error?.message||'');
+    mensaje.textContent=limitado
+      ? 'Hay demasiadas solicitudes de correo en este momento. Espera antes de volver a intentarlo; solicitarlo desde otra cuenta no evita el límite del proyecto.'
+      : 'No pudimos procesar la solicitud. Comprueba la conexión e inténtalo de nuevo más tarde.';
   }finally{if(boton)boton.disabled=false;}
 }
 function mostrarCambioContrasena(){
@@ -529,8 +544,10 @@ async function guardarNuevaContrasena(event){
     mensaje.textContent='No se pudo actualizar la contraseña: '+error.message;
   }finally{if(boton)boton.disabled=false;}
 }
-function mostrarRegistro(){
+function mostrarRegistro(tipo='dueno'){
   hideViews();
+  const selector=document.getElementById('registerRole');
+  if(['dueno','albergue','negocio'].includes(tipo)) selector.value=tipo;
   document.getElementById('registerView').classList.remove('hidden');
 }
 async function registrarUsuario(event) {
@@ -597,6 +614,47 @@ async function tramitarRolSeleccionadoEnRegistro(user, tipoActual) {
   if (error && error.code !== '23505') throw error;
   if (!error) toast('Solicitud de cuenta especial enviada para revisión');
 }
+// Restaurar una sesión vigente después de actualizar o reabrir Patitas.
+// getUser consulta el servidor de Auth: no confiamos solo en el perfil de localStorage.
+async function restaurarSesionPatitas(){
+  if(document.getElementById('homeView').classList.contains('hidden'))return;
+  try{
+    const {data,error}=await supabaseClient.auth.getUser();
+    if(error||!data?.user||usuarioId)return;
+    const user=data.user;
+    const {data:perfil,error:perfilError}=await supabaseClient.from('profiles')
+      .select('full_name,user_type').eq('id',user.id).maybeSingle();
+    if(perfilError||!perfil||!['dueno','albergue','negocio'].includes(perfil.user_type)){
+      console.warn('Patitas: sesión detectada sin perfil válido.');
+      return;
+    }
+    // El usuario pudo abrir Ingresar/Crear cuenta durante la comprobación.
+    if(usuarioId||document.getElementById('homeView').classList.contains('hidden'))return;
+    const tipos={dueno:'owner',albergue:'shelter',negocio:'business'};
+    currentUser=perfil.full_name||user.user_metadata?.full_name||user.email||'Petlover';
+    usuarioId=user.id;currentRole=tipos[perfil.user_type];
+    hideViews();
+    document.getElementById('dashboardView').classList.remove('hidden');
+    document.getElementById('headerLogin').classList.add('hidden');
+    document.getElementById('headerLogout').classList.remove('hidden');
+    document.getElementById('headerMore').classList.remove('hidden');
+    document.getElementById('headerRole').textContent=roleNames[currentRole];
+    document.getElementById('mobileRole').textContent=roleNames[currentRole];
+    document.getElementById('mobileRole').classList.remove('hidden');
+    document.getElementById('sideName').textContent=currentUser;
+    document.getElementById('sideRole').textContent=roleNames[currentRole];
+    document.getElementById('sideAvatar').textContent=roleIcons[currentRole];
+    activePage='inicio';conversacionActivaId=null;
+    renderNav();renderPage();
+    try{await tramitarRolSeleccionadoEnRegistro(user,perfil.user_type);}
+    catch(err){console.warn('Solicitud de rol pendiente de comprobación:',err);}
+    await cargarMascotas();
+    iniciarNotificacionesChat();
+  }catch(err){
+    console.warn('No fue posible restaurar automáticamente la sesión:',err);
+  }
+}
+
 async function login(e) {
   e.preventDefault();
   const correo = document.getElementById('loginName').value.trim();
@@ -682,9 +740,9 @@ function opcionesPatitas() {
   ];
   if (currentRole === 'business') return [
     {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
-    {texto:'Reporte',pagina:'Mi negocio',icono:'▥'},
-    {texto:'Productos',pagina:'Productos y servicios',icono:'▣'},
-    {texto:'Pedidos',pagina:'Solicitudes',icono:'☷'},
+    {texto:'Catálogo',pagina:'Productos y servicios',icono:'▣'},
+    {texto:'Mensajes',pagina:'Mensajes',icono:'✉'},
+    {texto:'Perdidas',pagina:'Perdidas',icono:'🔎'},
     {texto:'Perfil',pagina:'Mi perfil',icono:'♙'}
   ];
   return [
@@ -697,15 +755,15 @@ function opcionesPatitas() {
 }
 function renderNav() {
   document.getElementById('nav').innerHTML=opcionesPatitas().map(op=>
-    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}"><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span></button>`
+    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}" ${activePage===op.pagina.toLowerCase()?'aria-current="page"':''}><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span></button>`
   ).join('');
 }
 function abrirMenuExtra(){
   const rutas=currentRole==='owner'
-    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Eventos'],['🐾','Mis mascotas','Mis mascotas'],['♡','Adopciones','Adopciones']]
+    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Eventos']]
     : currentRole==='shelter'
-      ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes','Solicitudes'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Campañas'],['✦','Comunidad','Comunidad']]
-      : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['✦','Comunidad','Comunidad'],['📅','Eventos','Eventos'],['🎁','Donaciones','Donaciones'],['🎁','Promociones','Promociones']];
+      ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes de adopción','Solicitudes'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Campañas']]
+      : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📅','Eventos','Eventos'],['🎁','Donaciones','Donaciones']];
   document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong>${pagina==='Mensajes'?'<span class="chat-unread-badge hidden" data-unread-count></span>':''}<span>›</span></button>`).join('')}</div></div></div>`;
   actualizarIndicadoresChat();
 }
@@ -719,11 +777,11 @@ function portadaPatitas() {
    ${acceso('banner-orange','🐾','Mis rescatados','Gestiona los animales que esperan un hogar.','Ver rescatados','Rescatados','🐶 🐱')}
    ${acceso('banner-gold','🎁','Donaciones','Recibe apoyo para los animales de tu refugio.','Ver donaciones','Donaciones','🥣 🦴')}
    ${acceso('banner-peach','📅','Eventos','Comparte campañas y actividades de tu albergue.','Ver eventos','Campañas','🐕 🎈')}
-   </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Mis solicitudes')">📩 Mis solicitudes de adopción <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Solicitudes')">📩 Consultar solicitudes <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Gestionar donaciones <span>›</span></button></div>`;
+   </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Mis solicitudes')">📩 Mis solicitudes de adopción <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Gestionar donaciones <span>›</span></button></div>`;
   if(currentRole==='business')return `<section class="screen-intro"><span class="tiny-kicker">TU NEGOCIO TAMBIÉN AYUDA</span><h2>Pet Negocio</h2><p>Administra tu catálogo y conecta con la comunidad.</p></section><div class="feature-stack">
-    ${acceso('banner-orange','📈','Reporte estadístico','Consulta el movimiento de tu negocio.','Ver reporte','Mi negocio','📊 🐶')}
-    ${acceso('banner-gold','🛍️','Productos y servicios','Mantén actualizado tu catálogo de productos.','Ver catálogo','Productos y servicios','🥣 🧸')}
-    ${acceso('banner-peach','📩','Pedidos de clientes','Revisa el interés de nuevos clientes.','Ver pedidos','Solicitudes','🐱 📋')}
+    ${acceso('banner-orange','🛍️','Mi catálogo PET','Publica, edita y administra tus productos y servicios.','Ver mi catálogo','Productos y servicios','🥣 🧸')}
+    ${acceso('banner-gold','🔎','Mascotas perdidas','Ayuda a encontrar mascotas de la comunidad.','Ver avisos','Perdidas','🐶 🐾')}
+    ${acceso('banner-peach','📅','Eventos y campañas','Descubre actividades y campañas de la comunidad.','Ver eventos','Eventos','🐱 🎈')}
     </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Apoya la búsqueda de mascotas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
   return `<section class="screen-intro"><span class="tiny-kicker">TODO PARA EL BIENESTAR DE TU MASCOTA</span><h2>¡Hola, ${escapeHtml(currentUser || 'Petlover')}! <span class="hello-paw">🐾</span></h2><p>Encuentra, adopta, cuida y sé parte del cambio.</p></section>
   <div class="feature-stack">
@@ -733,7 +791,7 @@ function portadaPatitas() {
   </div>
   <div class="home-section-heading"><div><span class="tiny-kicker">TU COMUNIDAD</span><h2>Tus compañeros</h2></div><button type="button" class="text-link" onclick="navigate('Mis mascotas')">Ver todas ›</button></div>
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
-  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
 }
 function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='donaciones')cargarDonaciones();if(esPaginaCatalogo())cargarCatalogo();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
@@ -783,10 +841,8 @@ if(activePage==='inicio'){
  html+=vistaEventos();
 }else if(activePage==='donaciones'){
  html+=vistaDonaciones();
-}else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')){
- html+=`<div class="panel"><div class="panel-head"><h2>${currentRole==='shelter'?'Solicitudes y apoyo':'Solicitudes recibidas'}</h2><span class="tag">${requests.length} pendientes</span></div>${requests.map((r,i)=>`<div class="product-row"><div class="product-left"><div class="product-emoji">${i===0?'🐾':'💌'}</div><div><strong>${r}</strong><small>Recibida recientemente · Pendiente de revisión</small></div></div><button class="btn light small" onclick="toast('Solicitud marcada para revisión')">Revisar</button></div>`).join('')}</div>`;
-}else if(activePage==='mi negocio'){
- html+=`<div class="panel"><h2>📊 Reporte de negocio</h2><p class="muted">El panel estadístico detallado se implementará en una próxima etapa. Tu catálogo y solicitudes siguen disponibles desde el menú inferior.</p><button class="btn" onclick="navigate('Productos y servicios')">Ir a mis productos</button></div>`;
+}else if(activePage.includes('solicitud')||activePage.includes('donacion')||activePage.includes('campaña')||activePage==='mi negocio'){
+ html+=`<div class="panel empty"><h2>Esta sección ya no está disponible</h2><p>Para evitar información de demostración, usa las secciones activas de Patitas.</p><button type="button" class="btn" onclick="navigate('Inicio')">Volver al inicio</button></div>`;
 }else if(activePage.includes('perfil')||activePage.includes('negocio')){
  html+=`<div class="profile-hero"><div class="profile-avatar">${roleIcons[currentRole]}</div><div><small>MI CUENTA</small><h2>${escapeHtml(currentUser)}</h2><p>${roleNames[currentRole]}</p></div><span aria-hidden="true">🐾</span></div>
   <div class="panel"><h2>Información de cuenta</h2>
@@ -799,9 +855,9 @@ if(activePage==='inicio'){
     </form>
   </div>
   <div id="roleRequestArea" class="panel role-request-panel" aria-live="polite"><h2>🏡 Cuenta especial</h2><p>Consultando tu solicitud...</p></div>
-  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="navigate('Comunidad')">🤝 Comunidad Patitas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas <span>›</span></button><button onclick="logout()">↪ Cerrar sesión <span>›</span></button></div>`;
 }else{
- html+=`<div class="panel"><h2>Comunidad Patitas</h2>${feed('🐾','¡Bienvenido a la comunidad!','Comparte experiencias, consejos y novedades con otros petlovers.')}${feed('📅','Próximos eventos','Muy pronto podrás descubrir actividades para mascotas.')}</div>`;
+ html+=`<div class="panel empty"><h2>Sección no disponible</h2><p>Selecciona una de las funciones disponibles en el menú.</p><button type="button" class="btn" onclick="navigate('Inicio')">Volver al inicio</button></div>`;
 }
 root.innerHTML=html;actualizarIndicadoresChat();if(activePage==='mi perfil'){cargarDatosPerfil();cargarSolicitudRol();}}
 
@@ -1421,7 +1477,7 @@ function petTile(emoji, name, detail, status, adopt = false, foto = null, petId 
     ? `<img src="${escapeAttr(foto)}"
          alt="Foto de ${escapeAttr(name)}"
          style="width:100%;height:130px;object-fit:contain;display:block;"
-         onerror="this.remove();">`
+         onerror="if(this.previousElementSibling)this.previousElementSibling.style.display='';this.remove();">`
     : '';
 const esMiMascota = petId &&
   usuarioId &&
@@ -1448,13 +1504,7 @@ const esMiMascota = petId &&
             🗑️ Eliminar mascota
         </button> 
         ` : ''}
-        ${adopt && !esMiMascota ? `
-          <button class="btn small"
-            style="width:100%;margin-top:11px"
-            onclick="toast('¡Interés registrado!')">
-            Me interesa
-          </button>
-        ` : ''}
+        ${adopt && !esMiMascota ? '<p class="muted" style="font-size:12px;margin:11px 0 0">Para solicitar una adopción, utiliza la sección Adoptar.</p>' : ''}
       </div>
     </article>
   `;
@@ -1637,6 +1687,9 @@ if (error) throw error;
   }
 }
 function closeModal(){document.getElementById('modalRoot').innerHTML=''}
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&document.getElementById('modalRoot').children.length){closeModal();}
+});
 function filterPets() {
   const q = (document.getElementById('petSearch')?.value || '')
     .toLowerCase();
@@ -2287,12 +2340,13 @@ async function cargarMensajes(silencioso = false) {
   try {
     const {data,error} = await supabaseClient.from('messages')
       .select('id,sender_id,content,created_at,read_at').eq('conversation_id',id)
-      .order('created_at',{ascending:true}).limit(300);
+      .order('created_at',{ascending:false}).limit(100);
     if (error) throw error;
     if (conversacionActivaId !== id || activePage !== 'mensajes') return;
     const cercaDelFinal = destino.scrollHeight - destino.scrollTop - destino.clientHeight < 85;
     const antes = destino.innerHTML;
-    const nuevo = data?.length ? data.map(m => `<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p>
+    const recientes=(data||[]).slice().reverse();
+    const nuevo = recientes.length ? `${data.length===100?'<div class="chat-hint">Se muestran los últimos 100 mensajes.</div>':''}`+recientes.map(m => `<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p>
       <small>${new Date(m.created_at).toLocaleString('es-PE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${m.sender_id===usuarioId?` · <span class="chat-message-status">${m.read_at?'Leído ✓✓':'Enviado ✓'}</span>`:''}</small></div>`).join('')
       : '<div class="empty">Todavía no hay mensajes. ¡Escribe el primero!</div>';
     if (antes !== nuevo) {
@@ -2327,7 +2381,16 @@ async function enviarMensaje(e) {
   finally { if (boton) boton.disabled=false; }
 }
 
-function toast(msg){document.getElementById('toastRoot').innerHTML=`<div class="toast">${msg}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2600)}
+function toast(msg){
+ const destino=document.getElementById('toastRoot');
+ if(toast.temporizador)clearTimeout(toast.temporizador);
+ destino.replaceChildren();
+ const aviso=document.createElement('div');
+ aviso.className='toast';aviso.setAttribute('role','status');
+ aviso.textContent=String(msg);
+ destino.appendChild(aviso);
+ toast.temporizador=setTimeout(()=>destino.replaceChildren(),3500);
+}
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function escapeAttr(s){return escapeHtml(s)}
@@ -2358,13 +2421,25 @@ function mostrarCatalogo(){
  const destino=document.getElementById('productResults');if(!destino)return;
  const q=(document.getElementById('productSearch')?.value||'').trim().toLowerCase();
  const kind=document.getElementById('catalogKind')?.value||'';
- const lista=catalogoPatitas.filter(f=>(!kind||f.kind===kind)&&(!q||(`${f.name} ${f.category} ${f.description}`).toLowerCase().includes(q)));
+ const lista=catalogoPatitas.filter(f=>
+   (f.status==='publicado'||(currentRole==='business'&&f.business_id===usuarioId))&&
+   (!kind||f.kind===kind)&&
+   (!q||(`${f.name} ${f.category} ${f.description||''}`).toLowerCase().includes(q))
+ );
  destino.className='';destino.innerHTML=lista.length?`<div class="catalog-grid">${lista.map(tarjetaCatalogo).join('')}</div>`:'<div class="panel empty">No hay productos o servicios para mostrar.</div>';
 }
 async function cargarCatalogo(){
  const destino=document.getElementById('productResults');if(!destino||!esPaginaCatalogo())return;
  try{
-  const {data,error}=await supabaseClient.from('business_listings').select('id,business_id,kind,name,category,description,price,image_path,status,created_at').order('created_at',{ascending:false}).limit(100);
+  let consulta=supabaseClient.from('business_listings')
+    .select('id,business_id,kind,name,category,description,price,image_path,status,created_at')
+    .order('created_at',{ascending:false}).limit(100);
+  // Las publicaciones ocultas pertenecen solo a la vista del negocio propietario.
+  // La protección real también requiere RLS en Supabase.
+  consulta=(currentRole==='business'&&usuarioId)
+    ? consulta.or(`status.eq.publicado,business_id.eq.${usuarioId}`)
+    : consulta.eq('status','publicado');
+  const {data,error}=await consulta;
   if(error)throw error;
   if(document.getElementById('productResults')!==destino||!esPaginaCatalogo())return;
   catalogoPatitas=data||[];mostrarCatalogo();
@@ -2472,6 +2547,10 @@ showHome();
           'No se pudo validar el enlace. Si acabas de abrirlo, vuelve a solicitar otro desde Ingresar.';
       }
     }).catch(console.error);
+  }
+  // Los enlaces de recuperación deben conservar su propio formulario.
+  if(!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace){
+    restaurarSesionPatitas();
   }
 
 </script>
