@@ -269,6 +269,17 @@ html{scroll-padding-top:88px}
 button:disabled{opacity:.64;cursor:not-allowed;transform:none!important}
 @media(max-width:540px){.nav button{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
+/* PATITAS · Información del negocio y consultas privadas del catálogo */
+.catalog-location{display:flex;align-items:flex-start;gap:7px;font-size:13px;color:#455668;line-height:1.45;margin:10px 0;overflow-wrap:anywhere}
+.catalog-location strong{color:#213648}
+.catalog-contact-note{font-size:12px;color:#596875;line-height:1.5;margin:10px 0 0}
+.catalog-controls .btn{min-height:40px}
+.message-mode-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 5px}
+.message-mode-tabs button{border:1px solid #eec9a0;background:#fffaf4;border-radius:12px;padding:10px 13px;color:#364a5d;font-weight:750;min-height:44px}
+.message-mode-tabs button.active{background:#ffe0b8;border-color:#df9b55;color:#85400b}
+.business-chat-label{background:#fff2dc;border-radius:10px;padding:10px 12px;color:#765015;font-size:12px;line-height:1.5;margin:8px 0}
+@media(max-width:540px){.catalog-controls .btn{flex:1}.message-mode-tabs button{flex:1;font-size:12px}}
 </style>
 </head>
 <body>
@@ -421,6 +432,12 @@ let currentUser=null,currentRole='owner',activePage='inicio';
 let pets = [];
 let usuarioId = null;
 let conversacionActivaId = null;
+// Las conversaciones comerciales son independientes de los avisos de mascotas perdidas.
+let modoMensajesPatitas='mascotas';
+let consultaNegocioActivaId=null;
+let intervaloConsultasNegocio=null;
+let consultaNegocioCargando=false;
+
 let chatPollingId = null;
 let chatRefreshInProgress = false;
 let notificacionesPollingId = null;
@@ -644,7 +661,7 @@ async function restaurarSesionPatitas(){
     document.getElementById('sideName').textContent=currentUser;
     document.getElementById('sideRole').textContent=roleNames[currentRole];
     document.getElementById('sideAvatar').textContent=roleIcons[currentRole];
-    activePage='inicio';conversacionActivaId=null;
+    activePage='inicio';conversacionActivaId=null;consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
     renderNav();renderPage();
     try{await tramitarRolSeleccionadoEnRegistro(user,perfil.user_type);}
     catch(err){console.warn('Solicitud de rol pendiente de comprobación:',err);}
@@ -701,7 +718,7 @@ async function login(e) {
       console.error('No se pudo registrar automáticamente la solicitud:', solicitudError);
       toast('Tu cuenta está activa, pero la solicitud especial no pudo enviarse. Revisa Mi perfil.');
     }
-    conversacionActivaId = null;
+    conversacionActivaId = null;consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
     activePage = 'inicio';
     renderNav();
     renderPage();
@@ -720,6 +737,8 @@ async function logout() {
     return;
   }
 detenerCatalogoTiempoReal();
+detenerConsultasNegocioPolling();
+consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
 currentUser = null;
 usuarioId = null;
 conversacionActivaId = null;
@@ -796,7 +815,7 @@ function portadaPatitas() {
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
   <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
 }
-function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes')conversacionActivaId=null;renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='donaciones')cargarDonaciones();if(esPaginaCatalogo())cargarCatalogo();if(activePage==='mensajes')cargarConversaciones();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
+function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes'){conversacionActivaId=null;consultaNegocioActivaId=null;detenerConsultasNegocioPolling();}renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='donaciones')cargarDonaciones();if(esPaginaCatalogo())cargarCatalogo();if(activePage==='mensajes')cargarBandejaMensajesPatitas();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
 let html=activePage==='inicio'?'':`<div class="welcome"><div><div class="eyebrow">${roleNames[currentRole]}</div><h1>${title}</h1><div class="muted">${sub}</div></div>${activePage==='mis mascotas'||activePage==='mascotas'?'<button class="btn" onclick="openCreate()">＋ Agregar mascota</button>':''}</div>`;
 if(activePage==='inicio'){
@@ -2231,8 +2250,12 @@ async function marcarMensajesLeidos(conversacionId, mensajes) {
 // Los permisos de lectura y escritura se vuelven a comprobar en Supabase mediante RLS.
 function vistaMensajes() {
   return `<div class="panel chat-intro"><div class="panel-head"><h2>💬 Mis mensajes</h2>
-    <button class="btn light small" type="button" onclick="cargarConversaciones()">↻ Actualizar</button></div>
-    <p class="muted">Conversa de forma privada con las personas que publicaron o encontraron una mascota.</p></div>
+    <button class="btn light small" type="button" onclick="cargarBandejaMensajesPatitas()">↻ Actualizar</button></div>
+    <p class="muted">Tus conversaciones privadas de mascotas perdidas y consultas a negocios PET.</p>
+    <div class="message-mode-tabs" role="group" aria-label="Tipo de conversaciones">
+      <button type="button" class="${modoMensajesPatitas==='mascotas'?'active':''}" aria-pressed="${modoMensajesPatitas==='mascotas'}" onclick="seleccionarMensajesPatitas('mascotas')">🐾 Mascotas perdidas</button>
+      <button type="button" class="${modoMensajesPatitas==='negocios'?'active':''}" aria-pressed="${modoMensajesPatitas==='negocios'}" onclick="seleccionarMensajesPatitas('negocios')">🛍️ Productos y servicios</button>
+    </div></div>
     <div id="chatView"><div class="panel empty">Cargando conversaciones...</div></div>`;
 }
 function iniciarActualizacionChat() {
@@ -2252,7 +2275,7 @@ function obtenerTituloChat(c) {
   return n ? `Aviso de ${n}` : (c.lost_pet_id ? 'Aviso de mascota perdida' : 'Aviso eliminado');
 }
 async function cargarConversaciones() {
-  if (activePage !== 'mensajes') return;
+  if (activePage !== 'mensajes' || modoMensajesPatitas !== 'mascotas') return;
   const destino = document.getElementById('chatView');
   if (!destino) return;
   conversacionActivaId = null;
@@ -2398,6 +2421,164 @@ function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function escapeAttr(s){return escapeHtml(s)}
 
+// === CONSULTAS PRIVADAS A NEGOCIOS PET ===
+// Separadas del chat de mascotas perdidas. Las tablas y RLS se instalan con el SQL adjunto.
+function detenerConsultasNegocioPolling(){
+  if(intervaloConsultasNegocio){clearInterval(intervaloConsultasNegocio);intervaloConsultasNegocio=null;}
+}
+function iniciarConsultasNegocioPolling(){
+  detenerConsultasNegocioPolling();
+  intervaloConsultasNegocio=setInterval(()=>{
+    if(document.hidden||!usuarioId||activePage!=='mensajes'||modoMensajesPatitas!=='negocios')return;
+    if(consultaNegocioActivaId)cargarMensajesNegocio(true);
+    else cargarConsultasNegocio(true);
+  },8000);
+}
+function cargarBandejaMensajesPatitas(){
+  if(activePage!=='mensajes')return;
+  if(modoMensajesPatitas==='negocios'){
+    iniciarConsultasNegocioPolling();
+    if(consultaNegocioActivaId)abrirConsultaNegocio(consultaNegocioActivaId);
+    else cargarConsultasNegocio();
+  }else{
+    detenerConsultasNegocioPolling();
+    cargarConversaciones();
+  }
+}
+function seleccionarMensajesPatitas(modo){
+  if(!['mascotas','negocios'].includes(modo)||activePage!=='mensajes')return;
+  modoMensajesPatitas=modo;
+  consultaNegocioActivaId=null;
+  conversacionActivaId=null;
+  detenerConsultasNegocioPolling();
+  renderPage();
+  cargarBandejaMensajesPatitas();
+}
+async function contactarNegocio(listingId){
+  const boton=typeof event!=='undefined'?event?.currentTarget:null;
+  if(boton)boton.disabled=true;
+  try{
+    const {data:auth,error:authError}=await supabaseClient.auth.getUser();
+    const user=auth?.user;
+    if(authError||!user||!usuarioId||usuarioId!==user.id)throw Error('Inicia sesión para contactar al negocio.');
+    const {data:listing,error:listingError}=await supabaseClient.from('business_listings')
+      .select('id,business_id,name,status').eq('id',listingId).eq('status','publicado').single();
+    if(listingError||!listing)throw Error('Esta publicación ya no está disponible.');
+    if(listing.business_id===user.id)throw Error('Esta publicación te pertenece.');
+    const existente=await supabaseClient.from('business_inquiries').select('id')
+      .eq('listing_id',listing.id).eq('buyer_id',user.id).maybeSingle();
+    if(existente.error)throw existente.error;
+    let hilo=existente.data;
+    if(!hilo){
+      const creado=await supabaseClient.from('business_inquiries')
+        .insert({listing_id:listing.id,buyer_id:user.id})
+        .select('id').single();
+      if(creado.error){
+        if(creado.error.code!=='23505')throw creado.error;
+        const recuperado=await supabaseClient.from('business_inquiries').select('id')
+          .eq('listing_id',listing.id).eq('buyer_id',user.id).single();
+        if(recuperado.error)throw recuperado.error;
+        hilo=recuperado.data;
+      }else hilo=creado.data;
+    }
+    modoMensajesPatitas='negocios';
+    consultaNegocioActivaId=hilo.id;
+    navigate('Mensajes');
+  }catch(err){console.error('Consulta comercial:',err);alert('No se pudo contactar al negocio: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+async function cargarConsultasNegocio(silencioso=false){
+  if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId||consultaNegocioCargando)return;
+  const destino=document.getElementById('chatView');if(!destino)return;
+  consultaNegocioCargando=true;
+  if(!silencioso)destino.innerHTML='<div class="panel empty">Cargando consultas...</div>';
+  try{
+    const {data,error}=await supabaseClient.from('business_inquiries')
+      .select('id,listing_name,buyer_id,business_id,created_at')
+      .or(`buyer_id.eq.${usuarioId},business_id.eq.${usuarioId}`)
+      .order('created_at',{ascending:false}).limit(100);
+    if(error)throw error;
+    if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId||document.getElementById('chatView')!==destino)return;
+    const html=(data||[]).length?`<div class="chat-inbox">${data.map(c=>`<button type="button" class="chat-contact" onclick="abrirConsultaNegocio('${escapeAttr(c.id)}')">
+      <span class="chat-contact-icon">🛍️</span><span class="chat-contact-body"><strong>${escapeHtml(c.listing_name)}</strong><small>${c.business_id===usuarioId?'Consulta de cliente':'Consulta al negocio'} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span aria-hidden="true">›</span></button>`).join('')}</div>`
+      :'<div class="panel empty">Todavía no tienes consultas comerciales. Para comenzar, visita Productos y pulsa «Consultar al negocio».</div>';
+    if(destino.innerHTML!==html)destino.innerHTML=html;
+  }catch(err){
+    if(!silencioso&&document.getElementById('chatView')===destino)destino.innerHTML=`<div class="panel">No se pudieron cargar las consultas: ${escapeHtml(err.message)}</div>`;
+    else console.warn('No se actualizaron las consultas:',err);
+  }finally{consultaNegocioCargando=false;}
+}
+async function abrirConsultaNegocio(id){
+  if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'){
+    modoMensajesPatitas='negocios';consultaNegocioActivaId=id;
+    navigate('Mensajes');return;
+  }
+  const destino=document.getElementById('chatView');if(!destino)return;
+  consultaNegocioActivaId=id;
+  destino.innerHTML='<div class="panel empty">Abriendo consulta...</div>';
+  try{
+    const {data:c,error}=await supabaseClient.from('business_inquiries')
+      .select('id,listing_name,buyer_id,business_id').eq('id',id).single();
+    if(error||!c)throw error||Error('Consulta no disponible.');
+    if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId!==id)return;
+    destino.innerHTML=`<section class="chat-shell"><div class="chat-header"><button class="btn light small" type="button" onclick="volverConsultasNegocio()">← Volver</button>
+       <div><strong>🛍️ ${escapeHtml(c.listing_name)}</strong><small>${c.business_id===usuarioId?'Conversación con cliente':'Conversación con negocio PET'}</small></div></div>
+       <div class="business-chat-label">Este chat sirve para consultar disponibilidad, precio, entrega y condiciones. Patitas no procesa compras ni pagos. Evita enviar información financiera.</div>
+       <div class="chat-messages" id="businessChatMessages" aria-live="polite">Cargando mensajes...</div>
+       <form class="chat-compose" onsubmit="enviarMensajeNegocio(event)">
+         <textarea id="businessChatTexto" maxlength="1500" rows="2" required placeholder="Escribe tu consulta sobre el producto o servicio..."></textarea>
+         <button type="submit" class="btn">Enviar</button>
+       </form></section>`;
+    await cargarMensajesNegocio();
+    iniciarConsultasNegocioPolling();
+  }catch(err){
+    if(consultaNegocioActivaId===id&&document.getElementById('chatView')===destino)
+      destino.innerHTML=`<div class="panel">No se pudo abrir la conversación: ${escapeHtml(err.message)}<p><button class="btn light small" onclick="volverConsultasNegocio()">Volver</button></p></div>`;
+  }
+}
+function volverConsultasNegocio(){
+  consultaNegocioActivaId=null;
+  cargarConsultasNegocio();
+}
+async function cargarMensajesNegocio(silencioso=false){
+  const id=consultaNegocioActivaId;
+  const destino=document.getElementById('businessChatMessages');
+  if(!id||activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||!destino)return;
+  try{
+    const {data,error}=await supabaseClient.from('business_inquiry_messages')
+      .select('id,sender_id,content,created_at').eq('inquiry_id',id)
+      .order('created_at',{ascending:false}).limit(100);
+    if(error)throw error;
+    if(consultaNegocioActivaId!==id||document.getElementById('businessChatMessages')!==destino)return;
+    const cercaFinal=destino.scrollHeight-destino.scrollTop-destino.clientHeight<80;
+    const recientes=(data||[]).slice().reverse();
+    const html=recientes.length?`${(data||[]).length===100?'<div class="chat-hint">Se muestran los últimos 100 mensajes.</div>':''}`+recientes.map(m=>`<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p><small>${m.sender_id===usuarioId?'Tú · ':'Negocio/cliente · '}${new Date(m.created_at).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></div>`).join('')
+      :'<div class="empty">Todavía no hay mensajes. ¡Escribe tu primera consulta!</div>';
+    if(destino.innerHTML!==html){destino.innerHTML=html;if(!silencioso||cercaFinal)destino.scrollTop=destino.scrollHeight;}
+  }catch(err){
+    if(!silencioso)destino.innerHTML=`<div class="empty">No se pudieron cargar los mensajes: ${escapeHtml(err.message)}</div>`;
+    else console.warn('No se pudieron actualizar los mensajes del negocio:',err);
+  }
+}
+async function enviarMensajeNegocio(e){
+  e.preventDefault();
+  const texto=document.getElementById('businessChatTexto');
+  const contenido=texto?.value.trim()||'';
+  const id=consultaNegocioActivaId;
+  if(!id||!contenido||contenido.length>1500)return;
+  const boton=e.submitter;if(boton)boton.disabled=true;
+  try{
+    const {data:auth,error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!auth?.user||auth.user.id!==usuarioId)throw Error('Debes iniciar sesión nuevamente.');
+    const {error}=await supabaseClient.from('business_inquiry_messages')
+      .insert({inquiry_id:id,sender_id:auth.user.id,content:contenido});
+    if(error)throw error;
+    if(consultaNegocioActivaId===id&&texto)texto.value='';
+    await cargarMensajesNegocio();
+  }catch(err){alert('No se pudo enviar la consulta: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+
 // === CATÁLOGO REAL DE NEGOCIOS PET ===
 const categoriasCatalogo=['Alimentos','Salud','Accesorios','Higiene','Servicios','Otros'];
 let catalogoPatitas=[];
@@ -2463,8 +2644,10 @@ function tarjetaCatalogo(f){
  const foto=imagenCatalogo(f);
  return `<article class="catalog-card"><div class="catalog-image">${foto?`<img src="${escapeAttr(foto)}" alt="${escapeAttr(f.name)}" loading="lazy">`:'🛍️'}</div><div class="catalog-body"><span class="tag">${escapeHtml(f.kind==='servicio'?'Servicio':'Producto')}</span> ${f.status==='oculto'?'<span class="tag" style="background:#e9edf0;color:#45515b">Oculto</span>':''}
  <h3>${escapeHtml(f.name)}</h3><p><strong>${escapeHtml(f.category)}</strong></p><p>${escapeHtml(f.description)}</p>
+ <div class="catalog-location">📍 <span><strong>Zona del negocio:</strong> ${escapeHtml(f.location||'Todavía no indicada por el negocio')}</span></div>
  <strong class="price">S/ ${Number(f.price).toFixed(2)}</strong>
- ${propio?`<div class="catalog-controls"><button class="btn light small" onclick="abrirFormularioCatalogo('${escapeAttr(f.id)}')">Editar</button><button class="btn outline small" onclick="cambiarEstadoCatalogo('${escapeAttr(f.id)}')">${f.status==='oculto'?'Mostrar':'Ocultar'}</button><button class="btn outline small" onclick="eliminarCatalogo('${escapeAttr(f.id)}')">Eliminar</button></div>`:''}
+ ${propio?`<div class="catalog-controls"><button class="btn light small" onclick="abrirFormularioCatalogo('${escapeAttr(f.id)}')">Editar</button><button class="btn outline small" onclick="cambiarEstadoCatalogo('${escapeAttr(f.id)}')">${f.status==='oculto'?'Mostrar':'Ocultar'}</button><button class="btn outline small" onclick="eliminarCatalogo('${escapeAttr(f.id)}')">Eliminar</button></div>`
+ : f.status==='publicado'?`<div class="catalog-controls"><button type="button" class="btn small" onclick="contactarNegocio('${escapeAttr(f.id)}')">💬 Consultar al negocio</button></div>`:''}
  </div></article>`;
 }
 function mostrarCatalogo(){
@@ -2474,7 +2657,7 @@ function mostrarCatalogo(){
  const lista=catalogoPatitas.filter(f=>
    (f.status==='publicado'||(currentRole==='business'&&f.business_id===usuarioId))&&
    (!kind||f.kind===kind)&&
-   (!q||(`${f.name} ${f.category} ${f.description||''}`).toLowerCase().includes(q))
+   (!q||(`${f.name} ${f.category} ${f.location||''} ${f.description||''}`).toLowerCase().includes(q))
  );
  destino.className='';destino.innerHTML=lista.length?`<div class="catalog-grid">${lista.map(tarjetaCatalogo).join('')}</div>`:'<div class="panel empty">No hay productos o servicios para mostrar.</div>';
 }
@@ -2483,7 +2666,7 @@ async function cargarCatalogo(){
  const secuencia=++secuenciaCargaCatalogo;
  try{
   let consulta=supabaseClient.from('business_listings')
-    .select('id,business_id,kind,name,category,description,price,image_path,status,created_at')
+    .select('id,business_id,kind,name,category,description,location,price,image_path,status,created_at')
     .order('created_at',{ascending:false}).limit(100);
   // Las publicaciones ocultas pertenecen solo a la vista del negocio propietario.
   // La protección real también requiere RLS en Supabase.
@@ -2506,6 +2689,7 @@ function abrirFormularioCatalogo(id){
  <div class="field"><label>Tipo</label><select id="catalogFormKind"><option value="producto" ${f?.kind==='producto'?'selected':''}>Producto</option><option value="servicio" ${f?.kind==='servicio'?'selected':''}>Servicio</option></select></div>
  <div class="field"><label>Nombre</label><input id="catalogFormName" required minlength="3" maxlength="120" value="${escapeAttr(f?.name||'')}"></div>
  <div class="field"><label>Categoría</label><select id="catalogFormCategory">${opciones}</select></div>
+ <div class="field"><label for="catalogFormLocation">📍 Zona del negocio (distrito y ciudad)</label><input id="catalogFormLocation" type="text" required maxlength="160" value="${escapeAttr(f?.location||'')}" placeholder="Ej.: Los Olivos, Lima"><small class="muted">Se mostrará públicamente. Indica solo la zona comercial, no tu dirección particular.</small></div>
  <div class="field"><label>Precio en soles (S/)</label><input id="catalogFormPrice" type="number" step="0.01" min="0" max="999999.99" required value="${f?escapeAttr(f.price):''}" placeholder="Ej.: 35.00"></div>
  <div class="field"><label>Descripción</label><textarea id="catalogFormDescription" required minlength="10" maxlength="2000" rows="4">${escapeHtml(f?.description||'')}</textarea></div>
  <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máx. 5 MB)</label><input id="catalogFormImage" type="file" accept="image/jpeg,image/png,image/webp"></div>
@@ -2527,9 +2711,9 @@ async function guardarCatalogo(e,id){
    subidaNueva=`${usuarioId}/${crypto.randomUUID()}.${ext}`;
    const {error:upError}=await supabaseClient.storage.from('business-photos').upload(subidaNueva,archivo,{contentType:archivo.type});if(upError)throw upError;
   }
-  const payload={kind:document.getElementById('catalogFormKind').value,name:document.getElementById('catalogFormName').value.trim(),category:document.getElementById('catalogFormCategory').value,price:Number(document.getElementById('catalogFormPrice').value),description:document.getElementById('catalogFormDescription').value.trim(),updated_at:new Date().toISOString()};
+  const payload={kind:document.getElementById('catalogFormKind').value,name:document.getElementById('catalogFormName').value.trim(),category:document.getElementById('catalogFormCategory').value,location:document.getElementById('catalogFormLocation').value.trim(),price:Number(document.getElementById('catalogFormPrice').value),description:document.getElementById('catalogFormDescription').value.trim(),updated_at:new Date().toISOString()};
   if(subidaNueva)payload.image_path=subidaNueva;
-  if(payload.name.length<3||payload.description.length<10||!Number.isFinite(payload.price)||payload.price<0)throw Error('Revisa nombre, descripción y precio.');
+  if(payload.name.length<3||payload.description.length<10||payload.location.length<3||payload.location.length>160||!Number.isFinite(payload.price)||payload.price<0)throw Error('Revisa nombre, descripción, zona del negocio y precio.');
   let res;
   if(id)res=await supabaseClient.from('business_listings').update(payload).eq('id',id).eq('business_id',usuarioId).select('id');
   else res=await supabaseClient.from('business_listings').insert({...payload,business_id:usuarioId}).select('id');
