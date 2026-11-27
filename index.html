@@ -287,9 +287,39 @@ button:disabled{opacity:.64;cursor:not-allowed;transform:none!important}
 .message-mode-tabs button.active{background:#ffe0b8;border-color:#df9b55;color:#85400b}
 .business-chat-label{background:#fff2dc;border-radius:10px;padding:10px 12px;color:#765015;font-size:12px;line-height:1.5;margin:8px 0}
 @media(max-width:540px){.catalog-controls .btn{flex:1}.message-mode-tabs button{flex:1;font-size:12px}}
+/* Patitas: pantalla inicial durante la comprobación de Supabase Auth.
+   La portada y los controles no aparecen hasta decidir qué vista corresponde. */
+body.patitas-booting{overflow:hidden}
+body.patitas-booting .app{visibility:hidden}
+.startup-screen{display:none;position:fixed;inset:0;z-index:10000;min-height:100vh;min-height:100dvh;
+  background:linear-gradient(145deg,#fff6e9 0%,#fffbf3 55%,#ffeacf 100%);
+  align-items:center;justify-content:center;flex-direction:column;gap:15px;padding:24px;text-align:center}
+body.patitas-booting .startup-screen{display:flex}
+.startup-brand{display:flex;align-items:center;justify-content:center;gap:12px;color:#20334b;
+  font-weight:900;font-size:clamp(28px,6vw,36px);letter-spacing:-1.1px}
+.startup-brand .startup-paw{font-size:35px;line-height:1}
+.startup-dot{color:#a84b07}
+.startup-spinner{width:34px;height:34px;border:3px solid #f2d7b4;
+  border-top-color:#a84b07;border-radius:50%;animation:patitas-girar .8s linear infinite}
+.startup-text{font-size:14px;color:#586875;line-height:1.5;margin:0}
+.startup-slow{font-size:12px;color:#596875;line-height:1.5;max-width:310px;margin:0}
+.startup-slow[hidden]{display:none}
+.startup-reload{background:#a84b07;color:white;border:0;border-radius:12px;padding:10px 18px;font-weight:800}
+@keyframes patitas-girar{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.startup-spinner{animation:none;border-top-color:#a84b07}}
 </style>
 </head>
-<body>
+<body class="patitas-booting">
+<div class="startup-screen" id="startupScreen" role="status" aria-live="polite" aria-label="Patitas está comprobando tu sesión">
+  <div class="startup-brand" aria-hidden="true"><span class="startup-paw">🐾</span><span>Patitas<span class="startup-dot">.</span></span></div>
+  <div class="startup-spinner" aria-hidden="true"></div>
+  <p class="startup-text">Preparando tu espacio...</p>
+  <div class="startup-slow" id="startupSlow" hidden>
+    Está tardando más de lo habitual. Comprueba tu conexión e inténtalo de nuevo.
+    <div style="margin-top:10px"><button type="button" class="startup-reload" onclick="window.location.reload()">Reintentar</button></div>
+  </div>
+</div>
+<noscript><style>body.patitas-booting .startup-screen{display:none}body.patitas-booting .app{visibility:visible}body.patitas-booting{overflow:auto}</style></noscript>
 <div class="app">
 <header class="topbar">
   <div class="brand"><div class="paw">🐾</div><div class="brand-label"><span>Patitas<em>.</em></span><small id="mobileRole" class="mobile-role hidden" aria-label="Tipo de cuenta"></small></div></div>
@@ -501,6 +531,20 @@ function hideViews(){
   ['homeView','loginView','registerView','dashboardView','recoverView','resetView']
     .forEach(id=>document.getElementById(id).classList.add('hidden'));
 }
+// La transición se hace una sola vez: no se muestra la portada durante la verificación.
+let inicioPatitasFinalizado=false;
+const temporizadorCargaPatitas=setTimeout(()=>{
+  if(!inicioPatitasFinalizado){
+    const aviso=document.getElementById('startupSlow');
+    if(aviso)aviso.hidden=false;
+  }
+},12000);
+function finalizarCargaInicialPatitas(){
+  if(inicioPatitasFinalizado)return;
+  inicioPatitasFinalizado=true;
+  clearTimeout(temporizadorCargaPatitas);
+  document.body.classList.remove('patitas-booting');
+}
 function alternarContrasena(inputId, boton){
   const campo=document.getElementById(inputId);
   if(!campo)return;
@@ -674,6 +718,7 @@ async function restaurarSesionPatitas(){
     document.getElementById('sideAvatar').textContent=roleIcons[currentRole];
     activePage='inicio';conversacionActivaId=null;consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
     renderNav();renderPage();
+    finalizarCargaInicialPatitas();
     try{await tramitarRolSeleccionadoEnRegistro(user,perfil.user_type);}
     catch(err){console.warn('Solicitud de rol pendiente de comprobación:',err);}
     await cargarMascotas();
@@ -2872,10 +2917,12 @@ showHome();
   supabaseClient.auth.onAuthStateChange((evento, sesion) => {
     if(evento === 'PASSWORD_RECOVERY' || (enlaceRecuperacion && evento === 'SIGNED_IN')){
       mostrarCambioContrasena();
+      finalizarCargaInicialPatitas();
     }
   });
-  if(enlaceRecuperacion || hashRecuperacion){
+  if(enlaceRecuperacion || hashRecuperacion || errorEnlace){
     mostrarCambioContrasena();
+    finalizarCargaInicialPatitas();
     if(errorEnlace){
       document.getElementById('resetFeedback').textContent =
         'Este enlace no es válido o ha expirado. Solicita uno nuevo desde Ingresar.';
@@ -2890,7 +2937,9 @@ showHome();
   }
   // Los enlaces de recuperación deben conservar su propio formulario.
   if(!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace){
-    restaurarSesionPatitas();
+    // Se muestra la portada solo cuando Auth confirma que no hay sesión válida.
+    // finally también cubre errores de red o perfiles no disponibles.
+    restaurarSesionPatitas().finally(finalizarCargaInicialPatitas);
   }
 
 </script>
