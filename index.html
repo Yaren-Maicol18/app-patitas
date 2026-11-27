@@ -326,6 +326,12 @@ body.patitas-booting .startup-screen{display:flex}
 #formEditarMascota .pet-form-error{border:1px solid #f4aaa0;background:#fff0ed;color:#a5221c;border-radius:12px;padding:12px 13px;margin:13px 0;font-size:13px;line-height:1.5}
 #formEditarMascota .pet-photo-note{display:block;margin-top:6px;color:#506271;font-size:12px;line-height:1.45}
 #formEditarMascota .pet-photo-note.error{color:#a5221c;font-weight:700}
+
+/* Patitas: mensajes y validaciones dentro del formulario de Adopciones. */
+#formPublicacionAdopcion .adoption-form-error{border:1px solid #f4aaa0;background:#fff0ed;color:#a5221c;border-radius:12px;padding:12px 13px;margin:13px 0;font-size:13px;line-height:1.5}
+#formPublicacionAdopcion .adoption-form-error:focus{outline:2px solid #b53c31;outline-offset:2px}
+#formPublicacionAdopcion .adoption-photo-note{display:block;margin-top:6px;color:#506271;font-size:12px;line-height:1.45}
+#formPublicacionAdopcion .adoption-photo-note.error{color:#a5221c;font-weight:700}
 </style>
 </head>
 <body class="patitas-booting">
@@ -1290,12 +1296,85 @@ function galeriaEditableAdopcion(p){
  const fotos=fotosDeAdopcion(p);
  return `<div class="field"><label>Fotografías actuales (${fotos.length})</label><div id="adoptPhotosExisting" class="adoption-gallery">${fotos.length?fotos.map(f=>`<div class="adoption-gallery-item"><img src="${escapeAttr(urlFotoAdopcion(f.image_path))}" alt="Fotografía de ${escapeAttr(p.name)}"><button class="btn light small" type="button" onclick="eliminarFotoAdopcion('${escapeAttr(p.id)}','${escapeAttr(f.id)}')">🗑️ Eliminar foto</button></div>`).join(''):'<p class="muted">Esta publicación todavía no tiene fotografías.</p>'}</div></div>`;
 }
+// Errores de creación y edición de adopciones, visibles en el propio formulario.
+function limpiarErrorPublicacionAdopcion(campoId='') {
+ const formulario=document.getElementById('formPublicacionAdopcion');
+ if(!formulario)return;
+ if(campoId)document.getElementById(campoId)?.removeAttribute('aria-invalid');
+ else formulario.querySelectorAll('[aria-invalid="true"]').forEach(c=>c.removeAttribute('aria-invalid'));
+ const mensaje=document.getElementById('adoptFormMessage');
+ if(mensaje&&(!campoId||mensaje.dataset.campo===campoId)){
+  mensaje.textContent='';mensaje.dataset.campo='';mensaje.classList.add('hidden');
+ }
+}
+function mostrarErrorPublicacionAdopcion(texto,campoId='') {
+ const mensaje=document.getElementById('adoptFormMessage');
+ if(!mensaje){console.error(texto);return;}
+ mensaje.textContent=texto;
+ mensaje.dataset.campo=campoId;
+ mensaje.classList.remove('hidden');
+ const campo=campoId&&document.getElementById(campoId);
+ if(campo){campo.setAttribute('aria-invalid','true');campo.focus();}
+ else mensaje.focus();
+}
+function informarFotosPublicacionAdopcion() {
+ const input=document.getElementById('adopt_photos');
+ const ayuda=document.getElementById('adoptPhotosInfo');
+ if(!input||!ayuda)return;
+ const cantidad=input.files?.length||0;
+ let problema='';
+ try{validarFotosAdopcion(input.files||[]);}catch(error){problema=error.message;}
+ ayuda.textContent=problema||(cantidad===0
+  ? 'Sin fotografías nuevas: puedes publicarla sin fotos o añadirlas después.'
+  : cantidad===1?'1 fotografía seleccionada.':`${cantidad} fotografías seleccionadas.`);
+ ayuda.classList.toggle('error',Boolean(problema));
+ if(problema)mostrarErrorPublicacionAdopcion(problema,'adopt_photos');
+}
 function abrirPublicacionAdopcion(id=null){
  if(currentRole!=='shelter'||!usuarioId){alert('Solo un albergue autorizado puede publicar mascotas.');return;}
  const p=id?publicacionesAdopcion.find(x=>x.id===id&&x.shelter_id===usuarioId):null;
  if(id&&!p){alert('Publicación no encontrada.');return;}
- const campo=(nombre,clave,tipo='text',obligatorio=false)=>`<div class="field"><label for="adopt_${clave}">${nombre}</label><input id="adopt_${clave}" type="${tipo}" value="${escapeAttr(p?.[clave]??'')}" ${obligatorio?'required':''}></div>`;
- document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>${p?'Editar':'Publicar'} mascota en adopción</h2><button class="close" onclick="closeModal()">✕</button></div><form onsubmit="guardarPublicacionAdopcion(event,${id?`'${escapeAttr(id)}'`:'null'})">${campo('Nombre','name','text',true)}<div class="field"><label>Especie</label><select id="adopt_species"><option value="Perro" ${p?.species==='Perro'?'selected':''}>Perro</option><option value="Gato" ${p?.species==='Gato'?'selected':''}>Gato</option><option value="Otro" ${p?.species==='Otro'?'selected':''}>Otro</option></select></div>${campo('Raza (opcional)','breed')}${campo('Edad en años (opcional)','age','number')}${campo('Sexo (opcional)','sex')}${campo('Ubicación','location','text',true)}<div class="field"><label>Descripción</label><textarea id="adopt_description" maxlength="2000">${escapeHtml(p?.description??'')}</textarea></div>${p?`<div class="field"><label>Estado</label><select id="adopt_status">${[['disponible','Disponible'],['en_proceso','En proceso'],['adoptado','Adoptado']].map(([v,n])=>`<option value="${v}" ${p.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`:''}${p?galeriaEditableAdopcion(p):''}<div class="field"><label for="adopt_photos">${p?'Agregar nuevas fotografías':'Fotografías de la mascota (opcional)'}</label><input type="file" id="adopt_photos" accept="image/jpeg,image/png,image/webp" multiple><small class="adoption-upload-help">Hasta 5 imágenes por operación, JPG/PNG/WEBP, máximo 5 MB cada una. Las fotografías aparecerán en Rescatados y Adoptar.</small></div><button type="submit" class="btn" style="width:100%">${p?'Guardar cambios':'Publicar mascota'}</button></form></div></div>`;
+ const campo=(nombre,clave,tipo='text',obligatorio=false,atributos='')=>`
+  <div class="field"><label for="adopt_${clave}">${nombre}${obligatorio?' *':''}</label>
+  <input id="adopt_${clave}" type="${tipo}" value="${escapeAttr(p?.[clave]??'')}" ${obligatorio?'required':''} ${atributos}></div>`;
+ document.getElementById('modalRoot').innerHTML=`
+  <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adoptModalTitle">
+    <div class="modal-head"><h2 id="adoptModalTitle">${p?'Editar':'Publicar'} mascota en adopción</h2>
+     <button class="close" type="button" aria-label="Cerrar formulario" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:10px 0">Los campos marcados con * son obligatorios.</p>
+    <form id="formPublicacionAdopcion" novalidate onsubmit="guardarPublicacionAdopcion(event,${id?`'${escapeAttr(id)}'`:'null'})">
+     ${campo('Nombre de la mascota','name','text',true,'maxlength="100"')}
+     <div class="field"><label for="adopt_species">Especie *</label><select id="adopt_species" required>
+      <option value="Perro" ${p?.species==='Perro'?'selected':''}>Perro</option>
+      <option value="Gato" ${p?.species==='Gato'?'selected':''}>Gato</option>
+      <option value="Otro" ${p?.species==='Otro'?'selected':''}>Otro</option>
+     </select></div>
+     ${campo('Raza (opcional)','breed')}
+     ${campo('Edad en años (opcional)','age','number',false,'min="0" max="50" step="1" inputmode="numeric"')}
+     <small class="adoption-photo-note">Si indicas una edad, debe ser un número entero entre 0 y 50 años.</small>
+     ${campo('Sexo (opcional)','sex')}
+     ${campo('Ubicación','location','text',true)}
+     <div class="field"><label for="adopt_description">Descripción (opcional)</label>
+      <textarea id="adopt_description" maxlength="2000" rows="3">${escapeHtml(p?.description??'')}</textarea></div>
+     ${p?`<div class="field"><label for="adopt_status">Estado</label><select id="adopt_status">${[['disponible','Disponible'],['en_proceso','En proceso'],['adoptado','Adoptado']].map(([v,n])=>`<option value="${v}" ${p.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
+     ${p?galeriaEditableAdopcion(p):''}
+     <div class="field"><label for="adopt_photos">${p?'Agregar nuevas fotografías':'Fotografías de la mascota (opcional)'}</label>
+      <input type="file" id="adopt_photos" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="adoptPhotosHelp adoptPhotosInfo">
+      <small class="adoption-upload-help" id="adoptPhotosHelp">Hasta 5 imágenes por operación, JPG/PNG/WEBP, máximo 5 MB cada una. Las fotografías aparecerán en Rescatados y Adoptar.</small>
+      <small class="adoption-photo-note" id="adoptPhotosInfo" aria-live="polite">Sin fotografías nuevas: puedes publicarla sin fotos o añadirlas después.</small></div>
+     <div id="adoptFormMessage" class="adoption-form-error hidden" role="alert" aria-live="assertive" tabindex="-1"></div>
+     <button type="submit" class="btn" style="width:100%">${p?'Guardar cambios':'Publicar mascota'}</button>
+    </form>
+   </div>
+  </div>`;
+ const formulario=document.getElementById('formPublicacionAdopcion');
+ for(const campo of formulario.querySelectorAll('input,select,textarea')){
+  campo.addEventListener('input',()=>limpiarErrorPublicacionAdopcion(campo.id));
+  campo.addEventListener('change',()=>limpiarErrorPublicacionAdopcion(campo.id));
+ }
+ document.getElementById('adopt_photos').addEventListener('change',informarFotosPublicacionAdopcion);
+ document.getElementById('adopt_name').focus();
 }
 function validarFotosAdopcion(files){
  const fotos=[...files];
@@ -1325,25 +1404,69 @@ async function subirFotosAdopcion(id,fotos,idAlbergue){
  return subidas;
 }
 async function guardarPublicacionAdopcion(event,id){
- event.preventDefault();const boton=event.submitter;if(boton)boton.disabled=true;
+ event.preventDefault();
+ const formulario=document.getElementById('formPublicacionAdopcion');
+ if(!formulario||formulario.dataset.guardando==='1')return;
+ limpiarErrorPublicacionAdopcion();
+ if(currentRole!=='shelter'||!usuarioId){mostrarErrorPublicacionAdopcion('Debes iniciar sesión como albergue.');return;}
+ const valor=k=>document.getElementById('adopt_'+k).value.trim();
+ const nombre=valor('name');
+ if(!nombre){mostrarErrorPublicacionAdopcion('Escribe el nombre de la mascota.','adopt_name');return;}
+ if(nombre.length>100){mostrarErrorPublicacionAdopcion('El nombre debe tener como máximo 100 caracteres.','adopt_name');return;}
+ const especie=valor('species');
+ if(!['Perro','Gato','Otro'].includes(especie)){
+  mostrarErrorPublicacionAdopcion('Selecciona una especie válida.','adopt_species');return;
+ }
+ const ubicacion=valor('location');
+ if(!ubicacion){mostrarErrorPublicacionAdopcion('Escribe la ubicación de la mascota.','adopt_location');return;}
+ const campoEdad=document.getElementById('adopt_age');
+ const edad=valor('age');
+ if(campoEdad.validity.badInput||(edad!==''&&(!Number.isInteger(Number(edad))||Number(edad)<0||Number(edad)>50))){
+  mostrarErrorPublicacionAdopcion('La edad debe ser un número entero entre 0 y 50.','adopt_age');return;
+ }
+ let fotos;
+ try{fotos=validarFotosAdopcion(document.getElementById('adopt_photos')?.files||[]);}
+ catch(error){mostrarErrorPublicacionAdopcion(error.message,'adopt_photos');return;}
+ const estado=id?valor('status'):null;
+ if(id&&!['disponible','en_proceso','adoptado'].includes(estado)){
+  mostrarErrorPublicacionAdopcion('Selecciona un estado válido.','adopt_status');return;
+ }
+ const cambios={name:nombre,species:especie,breed:valor('breed')||null,
+  age:edad===''?null:Number(edad),sex:valor('sex')||null,
+  location:ubicacion,description:valor('description')||null};
+ const boton=event.submitter||formulario.querySelector('button[type="submit"]');
+ formulario.dataset.guardando='1';
+ if(boton){boton.disabled=true;boton.textContent=id?'Guardando cambios...':'Publicando mascota...';}
  let guardada=false;
  try{
-  if(currentRole!=='shelter'||!usuarioId)throw Error('Debes iniciar sesión como albergue.');
-  const valor=k=>document.getElementById('adopt_'+k).value.trim();
-  const fotos=validarFotosAdopcion(document.getElementById('adopt_photos')?.files||[]);
-  const edad=valor('age');const cambios={name:valor('name'),species:valor('species'),breed:valor('breed')||null,age:edad===''?null:Number(edad),sex:valor('sex')||null,location:valor('location'),description:valor('description')||null};
-  if(!cambios.name||!cambios.location||cambios.name.length>100||(cambios.age!==null&&(!Number.isInteger(cambios.age)||cambios.age<0||cambios.age>50)))throw Error('Comprueba el nombre, la ubicación y la edad (0 a 50).');
   let idPost=id;
-  if(id){const {data,error}=await supabaseClient.from('adoption_posts').update({...cambios,status:valor('status')}).eq('id',id).eq('shelter_id',usuarioId).select('id');if(error)throw error;if(!data?.length)throw Error('No tienes permiso para editar esta publicación.');}
-  else{const {data,error}=await supabaseClient.from('adoption_posts').insert({...cambios,shelter_id:usuarioId}).select('id').single();if(error)throw error;idPost=data.id;}
+  if(id){
+   const {data,error}=await supabaseClient.from('adoption_posts')
+    .update({...cambios,status:estado}).eq('id',id).eq('shelter_id',usuarioId).select('id');
+   if(error)throw error;
+   if(!data?.length)throw Error('No tienes permiso para editar esta publicación.');
+  }else{
+   const {data,error}=await supabaseClient.from('adoption_posts')
+    .insert({...cambios,shelter_id:usuarioId}).select('id').single();
+   if(error)throw error;
+   idPost=data.id;
+  }
   guardada=true;
   if(fotos.length)await subirFotosAdopcion(idPost,fotos,usuarioId);
   closeModal();toast(id?'Publicación actualizada':'Mascota publicada en adopción');await cargarAdopciones();
  }catch(error){
   console.error('Error al guardar adopción:',error);
-  if(guardada){closeModal();await cargarAdopciones();alert('La publicación se guardó, pero hubo un problema con algunas fotografías: '+error.message+'\nPuedes abrir Editar para volver a subir las que falten.');}
-  else alert('No se pudo guardar la publicación: '+error.message);
- }finally{if(boton)boton.disabled=false;}
+  if(guardada){
+   closeModal();
+   try{await cargarAdopciones();}catch(errorRecarga){console.error(errorRecarga);}
+   alert('La publicación se guardó, pero hubo un problema posterior (posiblemente con algunas fotografías): '+error.message+'\nPuedes abrir Editar para volver a subir las que falten.');
+  }else mostrarErrorPublicacionAdopcion('No se pudo guardar la publicación: '+error.message);
+ }finally{
+  delete formulario.dataset.guardando;
+  if(boton&&document.contains(boton)){
+   boton.disabled=false;boton.textContent=id?'Guardar cambios':'Publicar mascota';
+  }
+ }
 }
 async function eliminarFotoAdopcion(idPost,idFoto){
  if(currentRole!=='shelter'||!usuarioId)return;
