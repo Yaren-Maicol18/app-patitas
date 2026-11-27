@@ -124,6 +124,13 @@ html{scroll-padding-top:88px}
 .chat-compose textarea{flex:1;min-width:0;resize:vertical;max-height:110px;min-height:46px;border-radius:12px;padding:11px;border:1px solid #e9ddce;font-size:16px}
 .chat-compose button{min-height:46px}.chat-hint{font-size:12px;color:var(--muted);padding:0 14px 14px;margin:0}
 @media(max-width:540px){.chat-messages{height:48dvh;min-height:230px}.chat-shell{border-radius:16px}.chat-compose{padding:9px}.chat-compose .btn{padding:10px}}
+/* Indicadores de mensajes pendientes (mascotas perdidas + consultas comerciales). */
+.nav .chat-unread-badge{margin-left:auto;flex:none;line-height:1.2}
+.message-mode-tabs .chat-unread-badge{margin-left:5px;min-width:20px;height:20px;padding:1px 6px;font-size:11px;vertical-align:middle}
+@media(max-width:540px){
+ .nav button{position:relative}
+ .nav .chat-unread-badge{position:absolute;top:1px;right:1px;min-width:18px;height:18px;padding:1px 4px;font-size:10px;margin:0}
+}
 /* Indicadores de mensajes pendientes */
 .chat-unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:23px;padding:2px 7px;background:#dc3545;color:#fff;font-size:12px;font-weight:900;border-radius:99px;line-height:1}
 .header-more{position:relative}
@@ -444,6 +451,10 @@ let notificacionesPollingId = null;
 let notificacionesConsultando = false;
 let mensajesNoLeidos = 0;
 let noLeidosPorConversacion = {};
+// Contadores comerciales persistentes, calculados en Supabase según el usuario autenticado.
+let mensajesComercialesNoLeidos = 0;
+let noLeidosPorConsulta = {};
+let notificacionesNegocioConsultando = false;
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
 let eventosPatitas = [];
@@ -746,6 +757,9 @@ if (chatPollingId) { clearInterval(chatPollingId); chatPollingId = null; }
 if (notificacionesPollingId) { clearInterval(notificacionesPollingId); notificacionesPollingId = null; }
 mensajesNoLeidos = 0;
 noLeidosPorConversacion = {};
+mensajesComercialesNoLeidos = 0;
+noLeidosPorConsulta = {};
+notificacionesNegocioConsultando = false;
 actualizarIndicadoresChat();
 pets = [];
 currentRole = 'owner';
@@ -777,8 +791,9 @@ function opcionesPatitas() {
 }
 function renderNav() {
   document.getElementById('nav').innerHTML=opcionesPatitas().map(op=>
-    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}" ${activePage===op.pagina.toLowerCase()?'aria-current="page"':''}><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span></button>`
+    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}" ${activePage===op.pagina.toLowerCase()?'aria-current="page"':''}><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span>${op.pagina.toLowerCase()==='mensajes'?'<span class="chat-unread-badge hidden" data-unread-count aria-label="Mensajes no leídos"></span>':''}</button>`
   ).join('');
+  actualizarIndicadoresChat();
 }
 function abrirMenuExtra(){
   const rutas=currentRole==='owner'
@@ -2175,21 +2190,64 @@ async function eliminarAviso(avisoId) {
 // ===== NOTIFICACIONES Y CONFIRMACIÓN DE LECTURA =====
 function actualizarIndicadoresChat() {
   document.querySelectorAll('[data-unread-count]').forEach(etiqueta => {
-    etiqueta.textContent = mensajesNoLeidos > 99 ? '99+' : String(mensajesNoLeidos);
-    etiqueta.classList.toggle('hidden', mensajesNoLeidos === 0);
+    const total = mensajesNoLeidos + mensajesComercialesNoLeidos;
+    etiqueta.textContent = total > 99 ? '99+' : String(total);
+    etiqueta.classList.toggle('hidden', total === 0);
+    etiqueta.setAttribute('aria-label', `${total} mensajes sin leer`);
   });
   document.querySelectorAll('[data-chat-unread]').forEach(etiqueta => {
     const cantidad = noLeidosPorConversacion[etiqueta.dataset.chatUnread] || 0;
     etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
     etiqueta.classList.toggle('hidden', cantidad === 0);
   });
+  document.querySelectorAll('[data-business-unread]').forEach(etiqueta => {
+    const cantidad = noLeidosPorConsulta[etiqueta.dataset.businessUnread] || 0;
+    etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
+    etiqueta.classList.toggle('hidden', cantidad === 0);
+    etiqueta.setAttribute('aria-label', `${cantidad} mensajes comerciales sin leer`);
+  });
+  for(const [selector, cantidad] of [
+    ['[data-business-tab-unread]', mensajesComercialesNoLeidos],
+    ['[data-lost-tab-unread]', mensajesNoLeidos]
+  ]){
+    document.querySelectorAll(selector).forEach(etiqueta => {
+      etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
+      etiqueta.classList.toggle('hidden', cantidad === 0);
+    });
+  }
+}
+// Solo se cuentan mensajes recibidos que todavía no fueron leídos.
+// La función SQL usa SECURITY INVOKER y respeta las reglas RLS de cada cuenta.
+async function consultarNotificacionesNegocio(){
+  if(!usuarioId || notificacionesNegocioConsultando) return;
+  notificacionesNegocioConsultando = true;
+  const consultado = usuarioId;
+  try{
+    const {data,error}=await supabaseClient.rpc('patitas_conteos_consultas_no_leidas');
+    if(error)throw error;
+    if(usuarioId!==consultado)return;
+    const conteos={};
+    (data||[]).forEach(item=>{
+      const cantidad=Number(item.unread_count)||0;
+      if(cantidad>0)conteos[item.inquiry_id]=cantidad;
+    });
+    noLeidosPorConsulta=conteos;
+    mensajesComercialesNoLeidos=Object.values(conteos).reduce((total,n)=>total+n,0);
+    actualizarIndicadoresChat();
+  }catch(error){
+    console.warn('No se pudo consultar las notificaciones de productos:',error);
+  }finally{notificacionesNegocioConsultando=false;}
 }
 function iniciarNotificacionesChat() {
   if (notificacionesPollingId) clearInterval(notificacionesPollingId);
   consultarNotificacionesChat();
-  // Consulta periódica, incluso fuera de la pantalla de mensajes.
+  consultarNotificacionesNegocio();
+  // Se actualizan ambas clases de mensajes aunque la bandeja no esté abierta.
   notificacionesPollingId = setInterval(() => {
-    if (usuarioId && !document.hidden) consultarNotificacionesChat();
+    if (usuarioId && !document.hidden) {
+      consultarNotificacionesChat();
+      consultarNotificacionesNegocio();
+    }
   }, 12000);
 }
 async function consultarNotificacionesChat() {
@@ -2253,8 +2311,8 @@ function vistaMensajes() {
     <button class="btn light small" type="button" onclick="cargarBandejaMensajesPatitas()">↻ Actualizar</button></div>
     <p class="muted">Tus conversaciones privadas de mascotas perdidas y consultas a negocios PET.</p>
     <div class="message-mode-tabs" role="group" aria-label="Tipo de conversaciones">
-      <button type="button" class="${modoMensajesPatitas==='mascotas'?'active':''}" aria-pressed="${modoMensajesPatitas==='mascotas'}" onclick="seleccionarMensajesPatitas('mascotas')">🐾 Mascotas perdidas</button>
-      <button type="button" class="${modoMensajesPatitas==='negocios'?'active':''}" aria-pressed="${modoMensajesPatitas==='negocios'}" onclick="seleccionarMensajesPatitas('negocios')">🛍️ Productos y servicios</button>
+      <button type="button" class="${modoMensajesPatitas==='mascotas'?'active':''}" aria-pressed="${modoMensajesPatitas==='mascotas'}" onclick="seleccionarMensajesPatitas('mascotas')">🐾 Mascotas perdidas <span class="chat-unread-badge hidden" data-lost-tab-unread></span></button>
+      <button type="button" class="${modoMensajesPatitas==='negocios'?'active':''}" aria-pressed="${modoMensajesPatitas==='negocios'}" onclick="seleccionarMensajesPatitas('negocios')">🛍️ Productos y servicios <span class="chat-unread-badge hidden" data-business-tab-unread></span></button>
     </div></div>
     <div id="chatView"><div class="panel empty">Cargando conversaciones...</div></div>`;
 }
@@ -2349,9 +2407,9 @@ async function abrirConversacion(conversacionId) {
       <div><strong>${escapeHtml(obtenerTituloChat(c))}</strong><small>${escapeHtml(obtenerParticipante(c))}</small></div></div>
       <div class="chat-messages" id="chatMessages" aria-live="polite">Cargando mensajes...</div>
       <form class="chat-compose" onsubmit="enviarMensaje(event)">
-      <textarea id="chatTexto" maxlength="2000" rows="2" required placeholder="Escribe tu mensaje..."></textarea>
+      <textarea id="chatTexto" maxlength="2000" rows="2" enterkeyhint="send" required onkeydown="manejarEnterChat(event)" placeholder="Escribe tu mensaje..."></textarea>
       <button class="btn" type="submit">Enviar</button></form>
-      <p class="chat-hint">Por tu seguridad, evita compartir datos personales hasta verificar con quién conversas.</p></section>`;
+      <p class="chat-hint">Enter para enviar · Shift + Enter para salto de línea. Por tu seguridad, evita compartir datos personales hasta verificar con quién conversas.</p></section>`;
     await cargarMensajes();
     iniciarActualizacionChat();
   } catch (error) {
@@ -2386,6 +2444,18 @@ async function cargarMensajes(silencioso = false) {
     else console.error('Error al actualizar mensajes:',error);
   }
 }
+// Enviar desde el teclado en ambos chats de Patitas.
+// Shift + Enter permite saltos de línea. No interfiere con IME ni atajos.
+function manejarEnterChat(event){
+  if(event.key!=='Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey ||
+     event.isComposing || event.keyCode===229 || event.repeat) return;
+  event.preventDefault();
+  const formulario=event.currentTarget.closest('form');
+  const boton=formulario?.querySelector('button[type="submit"]');
+  if(!formulario || !boton || boton.disabled || !formulario.reportValidity()) return;
+  formulario.requestSubmit(boton); // Reutiliza el mismo envío y validaciones que el botón.
+}
+
 async function enviarMensaje(e) {
   e.preventDefault();
   const id = conversacionActivaId;
@@ -2393,6 +2463,7 @@ async function enviarMensaje(e) {
   const contenido = input?.value.trim() || '';
   if (!id || !contenido || contenido.length > 2000) return;
   const boton = e.submitter;
+  if (boton?.disabled) return;
   if (boton) boton.disabled = true;
   try {
     const {data:auth,error:authError} = await supabaseClient.auth.getUser();
@@ -2500,9 +2571,10 @@ async function cargarConsultasNegocio(silencioso=false){
     if(error)throw error;
     if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId||document.getElementById('chatView')!==destino)return;
     const html=(data||[]).length?`<div class="chat-inbox">${data.map(c=>`<button type="button" class="chat-contact" onclick="abrirConsultaNegocio('${escapeAttr(c.id)}')">
-      <span class="chat-contact-icon">🛍️</span><span class="chat-contact-body"><strong>${escapeHtml(c.listing_name)}</strong><small>${c.business_id===usuarioId?'Consulta de cliente':'Consulta al negocio'} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span aria-hidden="true">›</span></button>`).join('')}</div>`
+      <span class="chat-contact-icon">🛍️</span><span class="chat-contact-body"><strong>${escapeHtml(c.listing_name)}</strong><small>${c.business_id===usuarioId?'Consulta de cliente':'Consulta al negocio'} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span class="chat-unread-badge hidden" data-business-unread="${escapeAttr(c.id)}"></span><span aria-hidden="true">›</span></button>`).join('')}</div>`
       :'<div class="panel empty">Todavía no tienes consultas comerciales. Para comenzar, visita Productos y pulsa «Consultar al negocio».</div>';
     if(destino.innerHTML!==html)destino.innerHTML=html;
+    actualizarIndicadoresChat();
   }catch(err){
     if(!silencioso&&document.getElementById('chatView')===destino)destino.innerHTML=`<div class="panel">No se pudieron cargar las consultas: ${escapeHtml(err.message)}</div>`;
     else console.warn('No se actualizaron las consultas:',err);
@@ -2526,9 +2598,9 @@ async function abrirConsultaNegocio(id){
        <div class="business-chat-label">Este chat sirve para consultar disponibilidad, precio, entrega y condiciones. Patitas no procesa compras ni pagos. Evita enviar información financiera.</div>
        <div class="chat-messages" id="businessChatMessages" aria-live="polite">Cargando mensajes...</div>
        <form class="chat-compose" onsubmit="enviarMensajeNegocio(event)">
-         <textarea id="businessChatTexto" maxlength="1500" rows="2" required placeholder="Escribe tu consulta sobre el producto o servicio..."></textarea>
+         <textarea id="businessChatTexto" maxlength="1500" rows="2" enterkeyhint="send" required onkeydown="manejarEnterChat(event)" placeholder="Escribe tu consulta sobre el producto o servicio..."></textarea>
          <button type="submit" class="btn">Enviar</button>
-       </form></section>`;
+       </form><p class="chat-hint">Enter para enviar · Shift + Enter para salto de línea.</p></section>`;
     await cargarMensajesNegocio();
     iniciarConsultasNegocioPolling();
   }catch(err){
@@ -2546,7 +2618,7 @@ async function cargarMensajesNegocio(silencioso=false){
   if(!id||activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||!destino)return;
   try{
     const {data,error}=await supabaseClient.from('business_inquiry_messages')
-      .select('id,sender_id,content,created_at').eq('inquiry_id',id)
+      .select('id,sender_id,content,created_at,read_at').eq('inquiry_id',id)
       .order('created_at',{ascending:false}).limit(100);
     if(error)throw error;
     if(consultaNegocioActivaId!==id||document.getElementById('businessChatMessages')!==destino)return;
@@ -2555,10 +2627,33 @@ async function cargarMensajesNegocio(silencioso=false){
     const html=recientes.length?`${(data||[]).length===100?'<div class="chat-hint">Se muestran los últimos 100 mensajes.</div>':''}`+recientes.map(m=>`<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p><small>${m.sender_id===usuarioId?'Tú · ':'Negocio/cliente · '}${new Date(m.created_at).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></div>`).join('')
       :'<div class="empty">Todavía no hay mensajes. ¡Escribe tu primera consulta!</div>';
     if(destino.innerHTML!==html){destino.innerHTML=html;if(!silencioso||cercaFinal)destino.scrollTop=destino.scrollHeight;}
+    // Leer una conversación marca únicamente mensajes AJENOS sin leer.
+    if(!document.hidden)await marcarConsultaNegocioLeida(id, data||[]);
   }catch(err){
     if(!silencioso)destino.innerHTML=`<div class="empty">No se pudieron cargar los mensajes: ${escapeHtml(err.message)}</div>`;
     else console.warn('No se pudieron actualizar los mensajes del negocio:',err);
   }
+}
+// Solo el destinatario puede marcar como leído un mensaje de una consulta.
+// Supabase permite UPDATE(read_at) y restringe las filas mediante RLS.
+async function marcarConsultaNegocioLeida(id,mensajes){
+  if(!usuarioId||document.hidden||activePage!=='mensajes'||
+     modoMensajesPatitas!=='negocios'||consultaNegocioActivaId!==id)return;
+  const pendientes=mensajes.filter(m=>m.sender_id!==usuarioId&&!m.read_at).map(m=>m.id);
+  if(!pendientes.length)return;
+  const usuarioActual=usuarioId;
+  try{
+    const {error}=await supabaseClient.from('business_inquiry_messages')
+      .update({read_at:new Date().toISOString()})
+      .eq('inquiry_id',id).neq('sender_id',usuarioActual)
+      .is('read_at',null).in('id',pendientes);
+    if(error)throw error;
+    if(usuarioId!==usuarioActual)return;
+    delete noLeidosPorConsulta[id];
+    mensajesComercialesNoLeidos=Object.values(noLeidosPorConsulta).reduce((s,n)=>s+n,0);
+    actualizarIndicadoresChat();
+    await consultarNotificacionesNegocio();
+  }catch(error){console.warn('No se pudieron marcar las consultas como leídas:',error);}
 }
 async function enviarMensajeNegocio(e){
   e.preventDefault();
@@ -2566,7 +2661,7 @@ async function enviarMensajeNegocio(e){
   const contenido=texto?.value.trim()||'';
   const id=consultaNegocioActivaId;
   if(!id||!contenido||contenido.length>1500)return;
-  const boton=e.submitter;if(boton)boton.disabled=true;
+  const boton=e.submitter;if(boton?.disabled)return;if(boton)boton.disabled=true;
   try{
     const {data:auth,error:authError}=await supabaseClient.auth.getUser();
     if(authError||!auth?.user||auth.user.id!==usuarioId)throw Error('Debes iniciar sesión nuevamente.');
@@ -2575,6 +2670,7 @@ async function enviarMensajeNegocio(e){
     if(error)throw error;
     if(consultaNegocioActivaId===id&&texto)texto.value='';
     await cargarMensajesNegocio();
+    consultarNotificacionesNegocio();
   }catch(err){alert('No se pudo enviar la consulta: '+err.message);}
   finally{if(boton)boton.disabled=false;}
 }
@@ -2744,6 +2840,15 @@ async function eliminarCatalogo(id){
  toast('Publicación eliminada');await cargarCatalogo();
 }
 
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&usuarioId){
+    consultarNotificacionesChat();
+    consultarNotificacionesNegocio();
+    if(activePage==='mensajes'&&modoMensajesPatitas==='negocios'&&consultaNegocioActivaId){
+      cargarMensajesNegocio(true);
+    }
+  }
+});
 showHome();
 </script>
 <script>
