@@ -468,6 +468,12 @@ const roleIcons={owner:'🐕',shelter:'🏡',business:'🛍️'};
 let currentUser=null,currentRole='owner',activePage='inicio';
 let pets = [];
 let usuarioId = null;
+// Evita que respuestas antiguas de Supabase vuelvan a mostrar datos de otra cuenta.
+let versionSesionPatitas = 0;
+let autenticacionManualPatitas = false;
+let sincronizacionSesionPatitas = false;
+let comprobacionFocoPatitas = false;
+let ultimaComprobacionFocoPatitas = 0;
 let conversacionActivaId = null;
 // Las conversaciones comerciales son independientes de los avisos de mascotas perdidas.
 let modoMensajesPatitas='mascotas';
@@ -491,10 +497,13 @@ let eventosPatitas = [];
 let solicitudesDonacionPatitas = [];
 
 async function cargarMascotas() {
+  const usuarioDeLaConsulta = usuarioId;
+  const versionDeLaConsulta = versionSesionPatitas;
   const { data, error } = await supabaseClient
     .from('pets')
     .select("*, pet_photos(image_path, created_at)")  
     .order('created_at', { ascending: false });
+  if (usuarioDeLaConsulta !== usuarioId || versionDeLaConsulta !== versionSesionPatitas) return;
   if (error) {
     console.error('Error al cargar mascotas:', error.message);
     return;
@@ -544,6 +553,108 @@ function finalizarCargaInicialPatitas(){
   inicioPatitasFinalizado=true;
   clearTimeout(temporizadorCargaPatitas);
   document.body.classList.remove('patitas-booting');
+}
+// Una cuenta distinta puede sustituir la sesión compartida por las pestañas normales.
+// Nunca se presentan datos del usuario anterior mientras se valida el nuevo perfil.
+function limpiarCuentaPatitas(){
+  versionSesionPatitas++;
+  detenerCatalogoTiempoReal();
+  detenerConsultasNegocioPolling();
+  if(chatPollingId){clearInterval(chatPollingId);chatPollingId=null;}
+  if(notificacionesPollingId){clearInterval(notificacionesPollingId);notificacionesPollingId=null;}
+  usuarioId=null;
+  currentUser=null;
+  currentRole='owner';
+  activePage='inicio';
+  conversacionActivaId=null;
+  consultaNegocioActivaId=null;
+  modoMensajesPatitas='mascotas';
+  mensajesNoLeidos=0;
+  mensajesComercialesNoLeidos=0;
+  noLeidosPorConversacion={};
+  noLeidosPorConsulta={};
+  notificacionesConsultando=false;
+  notificacionesNegocioConsultando=false;
+  chatRefreshInProgress=false;
+  consultaNegocioCargando=false;
+  pets=[];
+  products=[];
+  avisosPerdidas=[];
+  publicacionesAdopcion=[];
+  solicitudesAdopcion=[];
+  eventosPatitas=[];
+  solicitudesDonacionPatitas=[];
+  document.getElementById('modalRoot').replaceChildren();
+  document.getElementById('dashContent').replaceChildren();
+  document.getElementById('nav').replaceChildren();
+}
+function mostrarInterfazCuentaPatitas(user,perfil){
+  const tipos={dueno:'owner',albergue:'shelter',negocio:'business'};
+  currentUser=perfil.full_name||user.user_metadata?.full_name||user.email||'Petlover';
+  usuarioId=user.id;
+  currentRole=tipos[perfil.user_type];
+  hideViews();
+  document.getElementById('dashboardView').classList.remove('hidden');
+  document.getElementById('headerLogin').classList.add('hidden');
+  document.getElementById('headerLogout').classList.remove('hidden');
+  document.getElementById('headerMore').classList.remove('hidden');
+  document.getElementById('headerRole').textContent=roleNames[currentRole];
+  document.getElementById('mobileRole').textContent=roleNames[currentRole];
+  document.getElementById('mobileRole').classList.remove('hidden');
+  document.getElementById('sideName').textContent=currentUser;
+  document.getElementById('sideRole').textContent=roleNames[currentRole];
+  document.getElementById('sideAvatar').textContent=roleIcons[currentRole];
+  activePage='inicio';
+  conversacionActivaId=null;
+  consultaNegocioActivaId=null;
+  modoMensajesPatitas='mascotas';
+  renderNav();renderPage();
+}
+// Se invoca fuera del callback onAuthStateChange (evita bloquear Supabase Auth).
+async function sincronizarCuentaEntrePestanas(idEsperado){
+  if(autenticacionManualPatitas) return;
+  if(idEsperado===usuarioId && !sincronizacionSesionPatitas) return;
+  sincronizacionSesionPatitas=true;
+  document.body.classList.add('patitas-booting');
+  const aviso=document.getElementById('startupSlow');
+  if(aviso)aviso.hidden=true;
+  limpiarCuentaPatitas();
+  const version=versionSesionPatitas;
+  showHome(); // Queda oculta por la pantalla de carga hasta validar el nuevo usuario.
+  try{
+    if(idEsperado){
+      await restaurarSesionPatitas(version,idEsperado);
+      if(version!==versionSesionPatitas) return;
+      if(!usuarioId){
+        showHome();
+        toast('No se pudo verificar la nueva sesión. Vuelve a ingresar.');
+      }else{
+        toast('Patitas actualizó tu cuenta al detectar otra sesión.');
+      }
+    }else{
+      toast('La sesión se cerró en otra pestaña.');
+    }
+  }finally{
+    if(version===versionSesionPatitas){
+      sincronizacionSesionPatitas=false;
+      finalizarCargaInicialPatitas();
+      document.body.classList.remove('patitas-booting');
+    }
+  }
+}
+// Comprobación adicional cuando se regresa a una pestaña que estuvo inactiva.
+async function verificarIdentidadAlVolverPatitas(forzar=false){
+  if(autenticacionManualPatitas||sincronizacionSesionPatitas||document.hidden||
+     (!forzar && Date.now()-ultimaComprobacionFocoPatitas<4000)||comprobacionFocoPatitas)return;
+  ultimaComprobacionFocoPatitas=Date.now();
+  comprobacionFocoPatitas=true;
+  try{
+    const {data,error}=await supabaseClient.auth.getUser();
+    if(error){console.warn('No se pudo verificar la sesión al volver:',error.message);return;}
+    const idActual=data?.user?.id||null;
+    if(idActual!==usuarioId)await sincronizarCuentaEntrePestanas(idActual);
+  }catch(err){console.warn('Error de conexión al revisar sesión:',err);}
+  finally{comprobacionFocoPatitas=false;}
 }
 function alternarContrasena(inputId, boton){
   const campo=document.getElementById(inputId);
@@ -688,40 +799,30 @@ async function tramitarRolSeleccionadoEnRegistro(user, tipoActual) {
 }
 // Restaurar una sesión vigente después de actualizar o reabrir Patitas.
 // getUser consulta el servidor de Auth: no confiamos solo en el perfil de localStorage.
-async function restaurarSesionPatitas(){
+async function restaurarSesionPatitas(versionEsperada=versionSesionPatitas,idEsperado=null){
+  // La ruta de recuperación de contraseña tiene su propio flujo.
   if(document.getElementById('homeView').classList.contains('hidden'))return;
   try{
     const {data,error}=await supabaseClient.auth.getUser();
+    if(versionEsperada!==versionSesionPatitas)return;
     if(error||!data?.user||usuarioId)return;
     const user=data.user;
+    if(idEsperado && user.id!==idEsperado)return;
     const {data:perfil,error:perfilError}=await supabaseClient.from('profiles')
       .select('full_name,user_type').eq('id',user.id).maybeSingle();
+    if(versionEsperada!==versionSesionPatitas)return;
     if(perfilError||!perfil||!['dueno','albergue','negocio'].includes(perfil.user_type)){
       console.warn('Patitas: sesión detectada sin perfil válido.');
       return;
     }
-    // El usuario pudo abrir Ingresar/Crear cuenta durante la comprobación.
     if(usuarioId||document.getElementById('homeView').classList.contains('hidden'))return;
-    const tipos={dueno:'owner',albergue:'shelter',negocio:'business'};
-    currentUser=perfil.full_name||user.user_metadata?.full_name||user.email||'Petlover';
-    usuarioId=user.id;currentRole=tipos[perfil.user_type];
-    hideViews();
-    document.getElementById('dashboardView').classList.remove('hidden');
-    document.getElementById('headerLogin').classList.add('hidden');
-    document.getElementById('headerLogout').classList.remove('hidden');
-    document.getElementById('headerMore').classList.remove('hidden');
-    document.getElementById('headerRole').textContent=roleNames[currentRole];
-    document.getElementById('mobileRole').textContent=roleNames[currentRole];
-    document.getElementById('mobileRole').classList.remove('hidden');
-    document.getElementById('sideName').textContent=currentUser;
-    document.getElementById('sideRole').textContent=roleNames[currentRole];
-    document.getElementById('sideAvatar').textContent=roleIcons[currentRole];
-    activePage='inicio';conversacionActivaId=null;consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
-    renderNav();renderPage();
+    mostrarInterfazCuentaPatitas(user,perfil);
     finalizarCargaInicialPatitas();
     try{await tramitarRolSeleccionadoEnRegistro(user,perfil.user_type);}
     catch(err){console.warn('Solicitud de rol pendiente de comprobación:',err);}
+    if(versionEsperada!==versionSesionPatitas || usuarioId!==user.id)return;
     await cargarMascotas();
+    if(versionEsperada!==versionSesionPatitas || usuarioId!==user.id)return;
     iniciarCatalogoTiempoReal();
     iniciarNotificacionesChat();
   }catch(err){
@@ -731,86 +832,62 @@ async function restaurarSesionPatitas(){
 
 async function login(e) {
   e.preventDefault();
+  if(autenticacionManualPatitas)return;
+  autenticacionManualPatitas=true;
   const correo = document.getElementById('loginName').value.trim();
   const contrasena = document.getElementById('loginPassword').value;
+  const boton=e.submitter;
+  if(boton)boton.disabled=true;
   try {
     const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email: correo,
-      password: contrasena
+      email: correo,password: contrasena
     });
     if (error) throw error;
     const { data: perfil, error: perfilError } = await supabaseClient
-      .from('profiles')
-      .select('full_name, user_type')
-      .eq('id', data.user.id)
-      .single();
-    if (perfilError || !perfil) {
-      await supabaseClient.auth.signOut();
+      .from('profiles').select('full_name,user_type').eq('id',data.user.id).single();
+    if (perfilError || !perfil || !['dueno','albergue','negocio'].includes(perfil.user_type)) {
+      await supabaseClient.auth.signOut({scope:'local'});
       throw new Error('No se pudo obtener tu perfil.');
     }
-    const tipos = {
-      dueno: 'owner',
-      albergue: 'shelter',
-      negocio: 'business'
-    };
-    currentUser = perfil.full_name || correo;
-    usuarioId = data.user.id;
-    currentRole = tipos[perfil.user_type] || 'owner';
-    hideViews();
-    document.getElementById('dashboardView').classList.remove('hidden');
-    document.getElementById('headerLogin').classList.add('hidden');
-    document.getElementById('headerLogout').classList.remove('hidden');
-    document.getElementById('headerMore').classList.remove('hidden');
-    document.getElementById('headerRole').textContent = roleNames[currentRole];
-    document.getElementById('mobileRole').textContent = roleNames[currentRole];
-    document.getElementById('mobileRole').classList.remove('hidden');
-    document.getElementById('sideName').textContent = currentUser;
-    document.getElementById('sideRole').textContent = roleNames[currentRole];
-    document.getElementById('sideAvatar').textContent = roleIcons[currentRole];
-    // Un error al registrar la solicitud no debe impedir entrar a Patitas.
-    try {
-      await tramitarRolSeleccionadoEnRegistro(data.user, perfil.user_type);
-    } catch (solicitudError) {
-      console.error('No se pudo registrar automáticamente la solicitud:', solicitudError);
+    // No reutilizar galerías, mensajes, contadores ni permisos de otra cuenta.
+    limpiarCuentaPatitas();
+    mostrarInterfazCuentaPatitas(data.user,perfil);
+    try {await tramitarRolSeleccionadoEnRegistro(data.user,perfil.user_type);}
+    catch (solicitudError) {
+      console.error('No se pudo registrar automáticamente la solicitud:',solicitudError);
       toast('Tu cuenta está activa, pero la solicitud especial no pudo enviarse. Revisa Mi perfil.');
     }
-    conversacionActivaId = null;consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
-    activePage = 'inicio';
-    renderNav();
-    renderPage();
     await cargarMascotas();
-    iniciarCatalogoTiempoReal();
-    iniciarNotificacionesChat();
-  } catch (error) {
-    alert('No se pudo iniciar sesión: ' + error.message);
+    if(usuarioId===data.user.id){
+      iniciarCatalogoTiempoReal();
+      iniciarNotificacionesChat();
+    }
+  } catch(error) {
+    alert('No se pudo iniciar sesión: '+error.message);
+  } finally {
+    autenticacionManualPatitas=false;
+    if(boton)boton.disabled=false;
+    // Por si otra pestaña cambió de cuenta mientras se completaba el login.
+    setTimeout(()=>verificarIdentidadAlVolverPatitas(true),0);
   }
 }
 async function logout() {
-  const { error } = await supabaseClient.auth.signOut();
-
-  if (error) {
-    alert('No se pudo cerrar sesión: ' + error.message);
-    return;
+  if(autenticacionManualPatitas)return;
+  autenticacionManualPatitas=true;
+  try{
+    // Cerrar en este navegador sin invalidar dispositivos ajenos.
+    const {error}=await supabaseClient.auth.signOut({scope:'local'});
+    if(error)throw error;
+    limpiarCuentaPatitas();
+    showHome();
+    toast('Sesión cerrada correctamente');
+  }catch(error){alert('No se pudo cerrar sesión: '+error.message);}
+  finally{
+    autenticacionManualPatitas=false;
+    setTimeout(()=>verificarIdentidadAlVolverPatitas(true),0);
   }
-detenerCatalogoTiempoReal();
-detenerConsultasNegocioPolling();
-consultaNegocioActivaId=null;modoMensajesPatitas='mascotas';
-currentUser = null;
-usuarioId = null;
-conversacionActivaId = null;
-if (chatPollingId) { clearInterval(chatPollingId); chatPollingId = null; }
-if (notificacionesPollingId) { clearInterval(notificacionesPollingId); notificacionesPollingId = null; }
-mensajesNoLeidos = 0;
-noLeidosPorConversacion = {};
-mensajesComercialesNoLeidos = 0;
-noLeidosPorConsulta = {};
-notificacionesNegocioConsultando = false;
-actualizarIndicadoresChat();
-pets = [];
-currentRole = 'owner';
-  showHome();
-  toast('Sesión cerrada correctamente');
 }
+
 function opcionesPatitas() {
   if (currentRole === 'shelter') return [
     {texto:'Inicio',pagina:'Inicio',icono:'⌂'},
@@ -2039,10 +2116,11 @@ function vistaAvisos() {
 }
 async function cargarAvisos() {
   if(activePage !== 'perdidas') return;
+  const idConsultado=usuarioId, versionConsultada=versionSesionPatitas;
   const {data,error} = await supabaseClient.from('lost_pets')
     .select('*,lost_pet_photos(image_path,created_at)')
     .order('created_at',{ascending:false});
-  if(activePage !== 'perdidas') return;
+  if(activePage !== 'perdidas' || idConsultado!==usuarioId || versionConsultada!==versionSesionPatitas)return;
   errorAvisos = error ? error.message : '';
   avisosPerdidas = data || [];
   mostrarAvisos();
@@ -2379,6 +2457,7 @@ function obtenerTituloChat(c) {
 }
 async function cargarConversaciones() {
   if (activePage !== 'mensajes' || modoMensajesPatitas !== 'mascotas') return;
+  const versionConsultada=versionSesionPatitas, idConsultado=usuarioId;
   const destino = document.getElementById('chatView');
   if (!destino) return;
   conversacionActivaId = null;
@@ -2390,9 +2469,9 @@ async function cargarConversaciones() {
       .or(`owner_id.eq.${usuarioId},finder_id.eq.${usuarioId}`)
       .order('created_at', { ascending:false });
     if (error) throw error;
-    if (activePage !== 'mensajes' || conversacionActivaId) return;
+    if (activePage !== 'mensajes' || conversacionActivaId || idConsultado!==usuarioId || versionConsultada!==versionSesionPatitas)return;
     await consultarNotificacionesChat();
-    if (activePage !== 'mensajes' || conversacionActivaId) return;
+    if (activePage !== 'mensajes' || conversacionActivaId || idConsultado!==usuarioId || versionConsultada!==versionSesionPatitas)return;
     destino.innerHTML = data?.length
       ? `<div class="chat-inbox">${data.map(c => `<button type="button" class="chat-contact" onclick="abrirConversacion('${escapeAttr(c.id)}')">
            <span class="chat-contact-icon">💬</span><span class="chat-contact-body"><strong>${escapeHtml(obtenerTituloChat(c))}</strong>
@@ -2918,7 +2997,30 @@ showHome();
     if(evento === 'PASSWORD_RECOVERY' || (enlaceRecuperacion && evento === 'SIGNED_IN')){
       mostrarCambioContrasena();
       finalizarCargaInicialPatitas();
+      return;
     }
+    if(enlaceRecuperacion||hashRecuperacion||errorEnlace||autenticacionManualPatitas||!inicioPatitasFinalizado)return;
+    // INITIAL_SESSION se resuelve en restaurarSesionPatitas para preservar el splash.
+    // No invocar métodos de Supabase dentro del callback de Auth.
+    if(!['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(evento))return;
+    const idNotificado=sesion?.user?.id||null;
+    if(idNotificado===usuarioId)return;
+    setTimeout(()=>{
+      if(!autenticacionManualPatitas && idNotificado!==usuarioId)
+        sincronizarCuentaEntrePestanas(idNotificado).catch(err=>{
+          console.error('No se pudo reconciliar el cambio de cuenta:',err);
+          sincronizacionSesionPatitas=false;
+          document.body.classList.remove('patitas-booting');
+        });
+    },0);
+  });
+  window.addEventListener('focus',()=>{
+    if(!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace)
+      verificarIdentidadAlVolverPatitas();
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace)
+      verificarIdentidadAlVolverPatitas();
   });
   if(enlaceRecuperacion || hashRecuperacion || errorEnlace){
     mostrarCambioContrasena();
