@@ -367,6 +367,15 @@ body.patitas-booting .startup-screen{display:flex}
 .adoption-chat-error{color:#a42a23;background:#fff0ee;border:1px solid #ffd0cb;padding:10px;border-radius:10px;font-size:13px;margin-top:9px}
 .adoption-chat-unread{display:inline-flex;align-items:center;justify-content:center;min-width:20px;padding:2px 6px;border-radius:30px;background:#be2c35;color:white;margin-left:5px;font-size:11px}
 @media(max-width:540px){.adoption-chat-modal .chat-messages{height:min(43dvh,320px)}.adoption-chat-modal .chat-compose{flex-direction:row}}
+/* Patitas · filtros de solicitudes de adopción (albergue y dueño). */
+.adoption-request-toolbar{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:10px;margin:14px 0 6px}
+.adoption-request-filter{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.adoption-request-filter label{color:var(--ink);font-size:13px;font-weight:800}
+.adoption-request-filter select{background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:10px 12px;min-width:225px;max-width:100%;font:inherit;font-size:13px}
+.adoption-request-filter select:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.adoption-filter-summary{color:var(--muted);font-size:12px;margin:0}
+.adoption-filter-empty{padding:22px 14px;text-align:center;border:1px dashed var(--line);border-radius:15px;background:#fff}
+@media(max-width:540px){.adoption-request-toolbar{align-items:stretch}.adoption-request-filter,.adoption-request-filter select{width:100%}}
 </style>
 </head>
 <body class="patitas-booting">
@@ -555,6 +564,10 @@ let notificacionesAdopcionPendientes = 0;
 let notificacionesAdopcionConsultando = false;
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
+// Cada cuenta conserva su filtro mientras navega; se reinicia al cerrar sesión.
+let filtrosSolicitudesPatitas = {'solicitudes':'todas','mis solicitudes':'todas'};
+let solicitudesPantallaPatitas = [];
+let titulosSolicitudesPantallaPatitas = {};
 // Resumen privado visible solo para el albergue: se usa para ordenar sus publicaciones.
 let prioridadesAdopcionesPatitas = {};
 // Evita finalizar dos veces una misma adopcion desde botones distintos.
@@ -665,6 +678,9 @@ function limpiarCuentaPatitas(){
   avisosPerdidas=[];
   publicacionesAdopcion=[];
   solicitudesAdopcion=[];
+  filtrosSolicitudesPatitas={'solicitudes':'todas','mis solicitudes':'todas'};
+  solicitudesPantallaPatitas=[];
+  titulosSolicitudesPantallaPatitas={};
   eventosPatitas=[];
   solicitudesDonacionPatitas=[];
   document.getElementById('modalRoot').replaceChildren();
@@ -1299,9 +1315,62 @@ async function eliminarEvento(id){
 // Adopciones: datos reales desde adoption_posts y adoption_requests.
 function etiquetaEstadoAdopcion(estado){return ({disponible:'Disponible',en_proceso:'En proceso',adoptado:'Adoptado'})[estado]||estado;}
 function etiquetaEstadoSolicitud(estado){return ({pendiente:'Pendiente',aprobada:'Aprobada',rechazada:'Rechazada'})[estado]||estado;}
+// Los estados "Aprobada" y "Finalizada" se distinguen con el estado de la publicación.
+// El estado original de la solicitud se conserva siempre en Supabase.
+const opcionesFiltroSolicitudesPatitas=[
+ ['todas','Todas'],['sin_leer','Mensajes sin leer'],['pendientes','Pendientes'],
+ ['aprobadas','Aprobadas / en proceso'],['rechazadas','Rechazadas'],['finalizadas','Finalizadas']
+];
+function cumpleFiltroSolicitudesPatitas(solicitud,publicacion,filtro){
+ switch(filtro){
+  case 'sin_leer':return (conteoNoLeidosAdopcion[solicitud.id]||0)>0;
+  case 'pendientes':return solicitud.status==='pendiente';
+  case 'aprobadas':return solicitud.status==='aprobada'&&publicacion?.status!=='adoptado';
+  case 'rechazadas':return solicitud.status==='rechazada';
+  case 'finalizadas':return solicitud.status==='aprobada'&&publicacion?.status==='adoptado';
+  default:return true;
+ }
+}
+function vistaFiltroSolicitudesPatitas(pagina){
+ const actual=filtrosSolicitudesPatitas[pagina]||'todas';
+ return `<div class="adoption-request-toolbar"><div class="adoption-request-filter"><label for="adoptionRequestFilter">Mostrar solicitudes</label><select id="adoptionRequestFilter" onchange="cambiarFiltroSolicitudesPatitas(this.value)">${opcionesFiltroSolicitudesPatitas.map(([id,texto])=>`<option value="${id}"${actual===id?' selected':''}>${texto}</option>`).join('')}</select></div><p class="adoption-filter-summary" id="adoptionFilterSummary" role="status" aria-live="polite">Cargando...</p></div>`;
+}
+function cambiarFiltroSolicitudesPatitas(filtro){
+ if(!['solicitudes','mis solicitudes'].includes(activePage))return;
+ if(!opcionesFiltroSolicitudesPatitas.some(([id])=>id===filtro))return;
+ filtrosSolicitudesPatitas[activePage]=filtro;
+ mostrarSolicitudesFiltradasPatitas();
+}
+function mostrarSolicitudesFiltradasPatitas(){
+ if(!['solicitudes','mis solicitudes'].includes(activePage))return;
+ const destino=document.getElementById('adoptionResults');
+ if(!destino)return;
+ const registros=solicitudesPantallaPatitas;
+ const titulos=titulosSolicitudesPantallaPatitas;
+ const filtro=filtrosSolicitudesPatitas[activePage]||'todas';
+ const cumple=(r,opcion)=>cumpleFiltroSolicitudesPatitas(r,titulos[r.adoption_id],opcion);
+ const totalPorFiltro=Object.fromEntries(opcionesFiltroSolicitudesPatitas.map(([id])=>[id,registros.filter(r=>cumple(r,id)).length]));
+ const select=document.getElementById('adoptionRequestFilter');
+ if(select){
+  select.value=filtro;
+  Array.from(select.options).forEach(opcion=>{
+   const base=opcionesFiltroSolicitudesPatitas.find(([id])=>id===opcion.value);
+   if(base)opcion.textContent=`${base[1]} (${totalPorFiltro[opcion.value]})`;
+  });
+ }
+ const seleccionados=registros.filter(r=>cumple(r,filtro));
+ const resumen=document.getElementById('adoptionFilterSummary');
+ if(resumen)resumen.textContent=`Mostrando ${seleccionados.length} de ${registros.length} solicitudes`;
+ const titulo=opcionesFiltroSolicitudesPatitas.find(([id])=>id===filtro)?.[1]?.toLowerCase()||'seleccionadas';
+ destino.className='';
+ destino.innerHTML=seleccionados.length
+  ?seleccionados.map(r=>tarjetaSolicitudAdopcion(r,titulos[r.adoption_id],activePage==='solicitudes')).join('')
+  :`<p class="adoption-filter-empty">${registros.length?'No hay solicitudes '+escapeHtml(titulo)+'. Prueba otro filtro.':'Todavía no hay solicitudes para mostrar.'}</p>`;
+ actualizarIndicadoresAdopcionChat();
+}
 function vistaAdopciones(){
-  if(activePage==='mis solicitudes') return `<div class="panel"><h2>📩 Mis solicitudes de adopción <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></h2><p class="muted">Consulta aquí el estado de tus solicitudes.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
-  if(activePage==='solicitudes') return `<div class="panel"><h2>📩 Solicitudes recibidas <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></h2><p class="muted">Revisa las solicitudes de adopción de tus publicaciones.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
+  if(activePage==='mis solicitudes') return `<div class="panel"><h2>📩 Mis solicitudes de adopción <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></h2><p class="muted">Consulta aquí el estado de tus solicitudes.</p>${vistaFiltroSolicitudesPatitas('mis solicitudes')}<div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
+  if(activePage==='solicitudes') return `<div class="panel"><h2>📩 Solicitudes recibidas <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></h2><p class="muted">Revisa las solicitudes de adopción de tus publicaciones.</p>${vistaFiltroSolicitudesPatitas('solicitudes')}<div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
   if(activePage==='rescatados') return `<div class="panel"><div class="panel-head"><h2>🐾 Mis rescatados en adopción</h2><button class="btn small" onclick="abrirPublicacionAdopcion()">＋ Publicar mascota</button></div><p class="muted">Publicaciones de adopción creadas por tu albergue.</p></div><div id="adoptionResults" class="empty">Cargando publicaciones...</div>`;
   return `<div class="panel"><div class="panel-head"><h2>❤️ Mascotas en adopción</h2><button class="btn light small" onclick="navigate('Mis solicitudes')">Mis solicitudes <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></button></div><p class="muted">Conoce a los animales que buscan una familia. Las solicitudes se envían directamente al albergue.</p></div><div id="adoptionResults" class="empty">Cargando mascotas...</div>`;
 }
@@ -1425,9 +1494,9 @@ async function cargarAdopciones(){
    if(!vigente())return;
    const esAlbergue=pagina==='solicitudes';
    visibles=ordenarPorAtencionAdopcionPatitas(visibles,true,esAlbergue);
-   destino.className='';
-   destino.innerHTML=visibles.length?visibles.map(x=>tarjetaSolicitudAdopcion(x,titulos[x.adoption_id],esAlbergue)).join(''):'<p class="empty">Todavía no hay solicitudes para mostrar.</p>';
-   actualizarIndicadoresAdopcionChat();
+   solicitudesPantallaPatitas=visibles;
+   titulosSolicitudesPantallaPatitas=titulos;
+   mostrarSolicitudesFiltradasPatitas();
   }
  }catch(error){console.error('Error de adopciones:',error);if(document.getElementById('adoptionResults')===destino)destino.innerHTML='<p class="muted">No fue posible cargar las adopciones: '+escapeHtml(error.message)+'</p><button class="btn light small" onclick="cargarAdopciones()">Reintentar</button>';}
 }
