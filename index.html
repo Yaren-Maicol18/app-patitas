@@ -155,7 +155,15 @@ html{scroll-padding-top:88px}
 .adoption-card-body{padding:17px}.adoption-card-body h3{margin:5px 0 10px}.adoption-card-body p{color:var(--muted);overflow-wrap:anywhere;line-height:1.5;font-size:14px}
 .adoption-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.adoption-actions .btn{flex:1}
 .adoption-status{display:inline-block;border-radius:20px;background:#e8f7ee;color:#218357;font-weight:800;font-size:12px;padding:6px 10px}
-.adoption-status.proceso{background:#fff2df;color:#a65a10}.adoption-status.adoptado{background:#edf0f2;color:#51606b}.adoption-delivered{background:#edf7ef;border-radius:10px;padding:9px 11px;color:#276c49!important}
+ .adoption-status.proceso{background:#fff2df;color:#a65a10}.adoption-status.adoptado{background:#edf0f2;color:#51606b}.adoption-delivered{background:#edf7ef;border-radius:10px;padding:9px 11px;color:#276c49!important}
+/* Orden de atención de adopciones: mensajes nuevos y solicitudes pendientes. */
+.adoption-priority-note{font-size:12px;font-weight:800;margin:9px 0 3px!important;line-height:1.4}
+.adoption-priority-note.unread{color:#a92235}
+.adoption-priority-note.pending{color:#a85b0d}
+.adoption-priority-note.active{color:#256a55}
+.adoption-card.adoption-priority-unread,.adoption-request.adoption-priority-unread{border-color:#e9a5a4}
+.adoption-card.adoption-priority-pending,.adoption-request.adoption-priority-pending{border-color:#efc282}
+
 .adoption-request{border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0;background:#fff}
 .adoption-request p{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
 @media(max-width:600px){.adoption-grid{grid-template-columns:1fr}.adoption-actions{flex-direction:column}.adoption-actions .btn{width:100%}}
@@ -547,6 +555,8 @@ let notificacionesAdopcionPendientes = 0;
 let notificacionesAdopcionConsultando = false;
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
+// Resumen privado visible solo para el albergue: se usa para ordenar sus publicaciones.
+let prioridadesAdopcionesPatitas = {};
 // Evita finalizar dos veces una misma adopcion desde botones distintos.
 const adopcionesFinalizandoPatitas=new Set();
 let chatAdopcionActivo = null;
@@ -623,6 +633,7 @@ function finalizarCargaInicialPatitas(){
 function limpiarCuentaPatitas(){
   detenerChatAdopcion();
   conteoNoLeidosAdopcion={};
+  prioridadesAdopcionesPatitas={};
   mensajesAdopcionNoLeidos=0;
   conteoAdopcionConsultando=false;
   versionSesionPatitas++;
@@ -1307,31 +1318,116 @@ function vistaGaleriaAdopcion(post){
  const src=urlFotoAdopcion(fotos[0].image_path);
  return `<div class="adoption-card-top"><img id="adoptionMain_${escapeAttr(post.id)}" src="${escapeAttr(src)}" alt="Foto de ${escapeAttr(post.name)}" onerror="this.style.display='none'">${fotos.length>1?`<span class="adoption-photo-count">📷 ${fotos.length}</span>`:''}</div>${fotos.length>1?`<div class="adoption-photo-thumbs">${fotos.map((f,i)=>`<img src="${escapeAttr(urlFotoAdopcion(f.image_path))}" alt="Ver foto ${i+1} de ${escapeAttr(post.name)}" onclick="document.getElementById('adoptionMain_${escapeAttr(post.id)}').src=this.src">`).join('')}</div>`:''}`;
 }
+// Prioridad: mensajes no leídos > solicitudes pendientes > adopciones en proceso.
+// Los empates mantienen el orden por fecha de creación más reciente.
+function ordenAtencionAdopcionPatitas(registro,esSolicitud=false,esAlbergue=false){
+ if(esSolicitud){
+  if((conteoNoLeidosAdopcion[registro.id]||0)>0)return 3;
+  if(esAlbergue&&registro.status==='pendiente')return 2;
+  if(esAlbergue&&registro.status==='aprobada')return 1;
+  return 0;
+ }
+ const datos=prioridadesAdopcionesPatitas[registro.id]||{};
+ if(datos.noLeidos>0)return 3;
+ if(datos.pendientes>0)return 2;
+ if(datos.aprobadas>0&&registro.status==='en_proceso')return 1;
+ return 0;
+}
+function ordenarPorAtencionAdopcionPatitas(registros,esSolicitud=false,esAlbergue=false){
+ return [...registros].sort((a,b)=>{
+  const diferencia=ordenAtencionAdopcionPatitas(b,esSolicitud,esAlbergue)-ordenAtencionAdopcionPatitas(a,esSolicitud,esAlbergue);
+  return diferencia||new Date(b.created_at||0)-new Date(a.created_at||0);
+ });
+}
+// Consulta únicamente mensajes de adopción sin leer autorizados por RLS.
+// Paginar evita ignorar registros si se supera el límite de 1000 filas de Supabase.
+async function obtenerConteosPendientesAdopcionPatitas(cuenta){
+ const conteos={};
+ const lote=500;
+ for(let desde=0;;desde+=lote){
+  const {data,error}=await supabaseClient.from('adoption_chat_messages')
+   .select('request_id').neq('sender_id',cuenta).is('read_at',null)
+   .order('created_at',{ascending:false}).range(desde,desde+lote-1);
+  if(error)throw error;
+  (data||[]).forEach(m=>{conteos[m.request_id]=(conteos[m.request_id]||0)+1;});
+  if(!data||data.length<lote)break;
+ }
+ return conteos;
+}
+// Consulta todos los registros de solicitudes por lotes sin alterar permisos RLS.
+async function obtenerSolicitudesParaRescatadosPatitas(idsPublicaciones){
+ const registros=[];
+ const lote=500;
+ for(let inicio=0;inicio<idsPublicaciones.length;inicio+=100){
+  const ids=idsPublicaciones.slice(inicio,inicio+100);
+  for(let desde=0;;desde+=lote){
+   const {data,error}=await supabaseClient.from('adoption_requests')
+    .select('id,adoption_id,status').in('adoption_id',ids)
+    .order('created_at',{ascending:false}).range(desde,desde+lote-1);
+   if(error)throw error;
+   registros.push(...(data||[]));
+   if(!data||data.length<lote)break;
+  }
+ }
+ return registros;
+}
 async function cargarAdopciones(){
  const destino=document.getElementById('adoptionResults');
- const pagina=activePage,idUsuario=usuarioId;
+ const pagina=activePage,idUsuario=usuarioId,version=versionSesionPatitas;
  if(!destino||!idUsuario)return;
+ const vigente=()=>activePage===pagina&&usuarioId===idUsuario&&versionSesionPatitas===version&&document.getElementById('adoptionResults')===destino;
  try{
   if(pagina==='adopciones'||pagina==='rescatados'){
    let consulta=supabaseClient.from('adoption_posts').select('*, adoption_photos(id,image_path,created_at)').order('created_at',{ascending:false});
    if(pagina==='rescatados')consulta=consulta.eq('shelter_id',idUsuario);
    const {data,error}=await consulta;if(error)throw error;
-   if(activePage!==pagina||usuarioId!==idUsuario)return;
-   publicacionesAdopcion=data||[];
+   if(!vigente())return;
+   let publicaciones=data||[];
+   if(pagina==='rescatados'){
+    let resumen={};
+    try{
+     if(publicaciones.length){
+      const solicitudes=await obtenerSolicitudesParaRescatadosPatitas(publicaciones.map(p=>p.id));
+      if(!vigente())return;
+      const noLeidos=await obtenerConteosPendientesAdopcionPatitas(idUsuario);
+      if(!vigente())return;
+      solicitudes.forEach(r=>{
+       const datos=resumen[r.adoption_id]||(resumen[r.adoption_id]={noLeidos:0,pendientes:0,aprobadas:0});
+       if(r.status==='pendiente')datos.pendientes++;
+       if(r.status==='aprobada')datos.aprobadas++;
+       datos.noLeidos+=noLeidos[r.id]||0;
+      });
+     }
+    }catch(errorPrioridad){console.warn('No se pudo actualizar la prioridad de las publicaciones:',errorPrioridad);}
+    if(!vigente())return;
+    prioridadesAdopcionesPatitas=resumen;
+    publicaciones=ordenarPorAtencionAdopcionPatitas(publicaciones);
+   }
+   publicacionesAdopcion=publicaciones;
    destino.className='adoption-grid';
-   destino.innerHTML=publicacionesAdopcion.length?publicacionesAdopcion.map(tarjetaAdopcion).join(''):'<div class="panel empty">Aún no hay publicaciones de adopción.</div>';
+   destino.innerHTML=publicaciones.length?publicaciones.map(tarjetaAdopcion).join(''):'<div class="panel empty">Aún no hay publicaciones de adopción.</div>';
   }else{
    const {data,error}=await supabaseClient.from('adoption_requests').select('id,adoption_id,applicant_id,message,status,created_at').order('created_at',{ascending:false});
    if(error)throw error;
-   if(activePage!==pagina||usuarioId!==idUsuario)return;
+   if(!vigente())return;
    solicitudesAdopcion=data||[];
    const ids=[...new Set(solicitudesAdopcion.map(x=>x.adoption_id))];
    let titulos={};
    if(ids.length){const r=await supabaseClient.from('adoption_posts').select('id,name,shelter_id,status').in('id',ids);if(r.error)throw r.error;titulos=Object.fromEntries((r.data||[]).map(p=>[p.id,p]));}
-   const visibles=solicitudesAdopcion.filter(x=>pagina==='mis solicitudes'?x.applicant_id===idUsuario:titulos[x.adoption_id]?.shelter_id===idUsuario);
+   if(!vigente())return;
+   let visibles=solicitudesAdopcion.filter(x=>pagina==='mis solicitudes'?x.applicant_id===idUsuario:titulos[x.adoption_id]?.shelter_id===idUsuario);
+   try{
+    const noLeidos=await obtenerConteosPendientesAdopcionPatitas(idUsuario);
+    if(!vigente())return;
+    // Evita contadores antiguos después de leer mensajes o al cambiar de solicitud.
+    visibles.forEach(r=>{conteoNoLeidosAdopcion[r.id]=noLeidos[r.id]||0;});
+   }catch(errorPrioridad){console.warn('No se pudo ordenar por mensajes pendientes:',errorPrioridad);}
+   if(!vigente())return;
+   const esAlbergue=pagina==='solicitudes';
+   visibles=ordenarPorAtencionAdopcionPatitas(visibles,true,esAlbergue);
    destino.className='';
-   destino.innerHTML=visibles.length?visibles.map(x=>tarjetaSolicitudAdopcion(x,titulos[x.adoption_id],pagina==='solicitudes')).join(''):'<p class="empty">Todavía no hay solicitudes para mostrar.</p>';
-   if(visibles.length)cargarNoLeidosAdopcion(visibles.map(x=>x.id));
+   destino.innerHTML=visibles.length?visibles.map(x=>tarjetaSolicitudAdopcion(x,titulos[x.adoption_id],esAlbergue)).join(''):'<p class="empty">Todavía no hay solicitudes para mostrar.</p>';
+   actualizarIndicadoresAdopcionChat();
   }
  }catch(error){console.error('Error de adopciones:',error);if(document.getElementById('adoptionResults')===destino)destino.innerHTML='<p class="muted">No fue posible cargar las adopciones: '+escapeHtml(error.message)+'</p><button class="btn light small" onclick="cargarAdopciones()">Reintentar</button>';}
 }
@@ -1339,7 +1435,13 @@ function tarjetaAdopcion(p){
  const propia=usuarioId===p.shelter_id;
  const estado=etiquetaEstadoAdopcion(p.status);
  const estClase=p.status==='adoptado'?' adoptado':p.status==='en_proceso'?' proceso':'';
- return `<article class="adoption-card">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span><h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button>${p.status==='en_proceso'?`<button type="button" class="btn small" onclick="finalizarAdopcionPatitas('${escapeAttr(p.id)}')">✅ Finalizar adopción</button>`:''}<button class="btn small adoption-delete-btn" onclick="eliminarPublicacionAdopcion('${escapeAttr(p.id)}')">🗑️ Eliminar publicación</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
+ const prioridad=propia?ordenAtencionAdopcionPatitas(p):0;
+ const info=propia?(prioridadesAdopcionesPatitas[p.id]||{}):{};
+ const nota=prioridad===3?`<p class="adoption-priority-note unread">💬 ${info.noLeidos} mensaje${info.noLeidos===1?'':'s'} sin leer</p>`
+  :prioridad===2?`<p class="adoption-priority-note pending">📩 ${info.pendientes} solicitud${info.pendientes===1?'':'es'} pendiente${info.pendientes===1?'':'s'}</p>`
+  :prioridad===1?'<p class="adoption-priority-note active">🤝 Adopción en proceso</p>':'';
+ const clasePrioridad=prioridad===3?' adoption-priority-unread':prioridad===2?' adoption-priority-pending':'';
+ return `<article class="adoption-card${clasePrioridad}">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span>${nota}<h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button>${p.status==='en_proceso'?`<button type="button" class="btn small" onclick="finalizarAdopcionPatitas('${escapeAttr(p.id)}')">✅ Finalizar adopción</button>`:''}<button class="btn small adoption-delete-btn" onclick="eliminarPublicacionAdopcion('${escapeAttr(p.id)}')">🗑️ Eliminar publicación</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
 }
 function galeriaEditableAdopcion(p){
  const fotos=fotosDeAdopcion(p);
@@ -1772,7 +1874,9 @@ async function enviarChatAdopcion(e){
 }
 
 function tarjetaSolicitudAdopcion(r,p,esAlbergue){
- return `<article class="adoption-request"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${p?.status==='adoptado'?'<p class="adoption-delivered"><strong>Entrega:</strong> Finalizada · mascota adoptada</p>':''}${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small><div class="adoption-actions"><button type="button" class="btn light small" onclick="abrirChatAdopcion('${escapeAttr(r.id)}')">💬 ${r.status==='rechazada'||p?.status==='adoptado'?'Ver conversación':'Chat de adopción'} <span class="adoption-chat-unread hidden" data-adoption-chat-count="${escapeAttr(r.id)}"></span></button></div>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}${esAlbergue&&r.status==='aprobada'&&p?.status==='en_proceso'?`<div class="adoption-actions"><button type="button" class="btn small" onclick="finalizarAdopcionPatitas('${escapeAttr(r.adoption_id)}')">✅ Confirmar entrega y finalizar adopción</button></div>`:''}</article>`;
+ const prioridad=ordenAtencionAdopcionPatitas(r,true,esAlbergue);
+ const clasePrioridad=prioridad===3?' adoption-priority-unread':prioridad===2?' adoption-priority-pending':'';
+ return `<article class="adoption-request${clasePrioridad}"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${p?.status==='adoptado'?'<p class="adoption-delivered"><strong>Entrega:</strong> Finalizada · mascota adoptada</p>':''}${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small><div class="adoption-actions"><button type="button" class="btn light small" onclick="abrirChatAdopcion('${escapeAttr(r.id)}')">💬 ${r.status==='rechazada'||p?.status==='adoptado'?'Ver conversación':'Chat de adopción'} <span class="adoption-chat-unread hidden" data-adoption-chat-count="${escapeAttr(r.id)}"></span></button></div>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}${esAlbergue&&r.status==='aprobada'&&p?.status==='en_proceso'?`<div class="adoption-actions"><button type="button" class="btn small" onclick="finalizarAdopcionPatitas('${escapeAttr(r.adoption_id)}')">✅ Confirmar entrega y finalizar adopción</button></div>`:''}</article>`;
 }
 // Solo el albergue responsable puede cerrar una adopcion que realmente se entrego.
 // La aprobacion permanece registrada; el chat se conserva pero deja de aceptar mensajes.
@@ -2989,9 +3093,9 @@ function iniciarNotificacionesChat() {
   consultarNotificacionesNegocio();
   consultarNotificacionesAdopcion();
   consultarNoLeidosChatAdopcion();
-  if(['mis solicitudes','solicitudes'].includes(activePage)){
-    const ids=solicitudesAdopcion.map(x=>x.id);if(ids.length)cargarNoLeidosAdopcion(ids);
-  }
+  // En las secciones de gestión se actualiza también el orden de atención.
+  // No se interrumpe un formulario o un chat abierto por una actualización de fondo.
+  if(['rescatados','solicitudes','mis solicitudes'].includes(activePage)&&!document.getElementById('modalRoot')?.firstChild)cargarAdopciones();
   // La campanita de adopciones se actualiza junto con los chats.
   notificacionesPollingId = setInterval(() => {
     if (usuarioId && !document.hidden) {
@@ -2999,9 +3103,7 @@ function iniciarNotificacionesChat() {
       consultarNotificacionesNegocio();
       consultarNotificacionesAdopcion();
       consultarNoLeidosChatAdopcion();
-      if(['mis solicitudes','solicitudes'].includes(activePage)){
-        const ids=solicitudesAdopcion.map(x=>x.id);if(ids.length)cargarNoLeidosAdopcion(ids);
-      }
+      if(['rescatados','solicitudes','mis solicitudes'].includes(activePage)&&!document.getElementById('modalRoot')?.firstChild)cargarAdopciones();
     }
   }, 12000);
 }
