@@ -349,6 +349,16 @@ body.patitas-booting .startup-screen{display:flex}
 .adoption-notice-tag{font-size:11px;font-weight:800;color:#995217}
 .adoption-notice-toolbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 @media(max-width:540px){.adoption-bell{min-width:36px;width:36px;height:36px;border-radius:11px;font-size:19px}.top-actions{gap:5px}.adoption-notice-modal{padding:18px}.adoption-notices{max-height:56dvh}}
+
+/* Chat privado de adopciones: independiente de otros chats de Patitas. */
+.adoption-chat-modal{width:min(620px,100%);max-height:calc(100dvh - 32px);overflow-y:auto}
+.adoption-chat-modal .chat-shell{border-radius:14px}
+.adoption-chat-modal .chat-messages{height:min(45dvh,390px);min-height:200px}
+.adoption-chat-modal .chat-compose textarea{min-height:48px}
+.adoption-chat-caption{font-size:13px;color:var(--muted);line-height:1.45;margin:8px 0 12px}
+.adoption-chat-error{color:#a42a23;background:#fff0ee;border:1px solid #ffd0cb;padding:10px;border-radius:10px;font-size:13px;margin-top:9px}
+.adoption-chat-unread{display:inline-flex;align-items:center;justify-content:center;min-width:20px;padding:2px 6px;border-radius:30px;background:#be2c35;color:white;margin-left:5px;font-size:11px}
+@media(max-width:540px){.adoption-chat-modal .chat-messages{height:min(43dvh,320px)}.adoption-chat-modal .chat-compose{flex-direction:row}}
 </style>
 </head>
 <body class="patitas-booting">
@@ -537,6 +547,11 @@ let notificacionesAdopcionPendientes = 0;
 let notificacionesAdopcionConsultando = false;
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
+let chatAdopcionActivo = null;
+let intervaloChatAdopcion = null;
+let chatAdopcionCargando = false;
+let limiteMensajesAdopcion = 50;
+let conteoNoLeidosAdopcion = {};
 let eventosPatitas = [];
 let solicitudesDonacionPatitas = [];
 
@@ -601,6 +616,8 @@ function finalizarCargaInicialPatitas(){
 // Una cuenta distinta puede sustituir la sesión compartida por las pestañas normales.
 // Nunca se presentan datos del usuario anterior mientras se valida el nuevo perfil.
 function limpiarCuentaPatitas(){
+  detenerChatAdopcion();
+  conteoNoLeidosAdopcion={};
   versionSesionPatitas++;
   detenerCatalogoTiempoReal();
   detenerConsultasNegocioPolling();
@@ -1303,10 +1320,11 @@ async function cargarAdopciones(){
    solicitudesAdopcion=data||[];
    const ids=[...new Set(solicitudesAdopcion.map(x=>x.adoption_id))];
    let titulos={};
-   if(ids.length){const r=await supabaseClient.from('adoption_posts').select('id,name,shelter_id').in('id',ids);if(r.error)throw r.error;titulos=Object.fromEntries((r.data||[]).map(p=>[p.id,p]));}
+   if(ids.length){const r=await supabaseClient.from('adoption_posts').select('id,name,shelter_id,status').in('id',ids);if(r.error)throw r.error;titulos=Object.fromEntries((r.data||[]).map(p=>[p.id,p]));}
    const visibles=solicitudesAdopcion.filter(x=>pagina==='mis solicitudes'?x.applicant_id===idUsuario:titulos[x.adoption_id]?.shelter_id===idUsuario);
    destino.className='';
    destino.innerHTML=visibles.length?visibles.map(x=>tarjetaSolicitudAdopcion(x,titulos[x.adoption_id],pagina==='solicitudes')).join(''):'<p class="empty">Todavía no hay solicitudes para mostrar.</p>';
+   if(visibles.length)cargarNoLeidosAdopcion(visibles.map(x=>x.id));
   }
  }catch(error){console.error('Error de adopciones:',error);if(document.getElementById('adoptionResults')===destino)destino.innerHTML='<p class="muted">No fue posible cargar las adopciones: '+escapeHtml(error.message)+'</p><button class="btn light small" onclick="cargarAdopciones()">Reintentar</button>';}
 }
@@ -1581,8 +1599,144 @@ async function enviarSolicitudAdopcion(event,id){
   closeModal();toast('¡Solicitud enviada al albergue!');
  }catch(error){alert('No se pudo enviar la solicitud: '+error.message);}finally{if(boton)boton.disabled=false;}
 }
+
+// ===== CHAT PRIVADO DE ADOPCIONES =====
+// Cada solicitud es una conversación independiente; RLS restringe lectura y escritura.
+// Solo hay mensajes entre el solicitante y el albergue, sin chats públicos ni pagos.
+function detenerChatAdopcion(){
+  if(intervaloChatAdopcion){clearInterval(intervaloChatAdopcion);intervaloChatAdopcion=null;}
+  chatAdopcionActivo=null;
+  chatAdopcionCargando=false;
+  limiteMensajesAdopcion=50;
+}
+async function cargarNoLeidosAdopcion(ids){
+  if(!usuarioId||!['mis solicitudes','solicitudes'].includes(activePage)||!ids?.length)return;
+  const sesion=versionSesionPatitas,cuenta=usuarioId;
+  try{
+    // Conteos exactos, también cuando Supabase limita las filas recuperadas.
+    const resultados=await Promise.all(ids.map(async id=>{
+      const {count,error}=await supabaseClient.from('adoption_chat_messages')
+        .select('id',{head:true,count:'exact'}).eq('request_id',id)
+        .neq('sender_id',cuenta).is('read_at',null);
+      if(error)throw error;
+      return [id,count||0];
+    }));
+    if(cuenta!==usuarioId||sesion!==versionSesionPatitas)return;
+    resultados.forEach(([id,cantidad])=>{
+      conteoNoLeidosAdopcion[id]=cantidad;
+      const elemento=document.querySelector(`[data-adoption-chat-count="${id}"]`);
+      if(elemento){elemento.textContent=cantidad>99?'99+':String(cantidad);elemento.classList.toggle('hidden',cantidad===0);}
+    });
+  }catch(err){console.warn('No se pudo consultar los chats de adopciones:',err);}
+}
+async function abrirChatAdopcion(id){
+  if(!usuarioId)return;
+  detenerChatAdopcion();
+  const cuenta=usuarioId,sesion=versionSesionPatitas;
+  const raiz=document.getElementById('modalRoot');
+  raiz.innerHTML='<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal adoption-chat-modal" id="adoptionChatLoader"><div class="modal-head"><h2>💬 Chat de adopción</h2><button class="close" onclick="closeModal()" type="button">✕</button></div><p class="muted">Abriendo conversación privada...</p></div></div>';
+  try{
+    const {data:r,error:errR}=await supabaseClient.from('adoption_requests')
+      .select('id,adoption_id,applicant_id,status').eq('id',id).single();
+    if(errR||!r)throw errR||new Error('Solicitud no encontrada.');
+    const {data:p,error:errP}=await supabaseClient.from('adoption_posts')
+      .select('id,name,shelter_id,status').eq('id',r.adoption_id).single();
+    if(errP||!p)throw errP||new Error('Publicación no disponible.');
+    if(cuenta!==usuarioId||sesion!==versionSesionPatitas||!document.getElementById('adoptionChatLoader'))return;
+    if(r.applicant_id!==cuenta&&p.shelter_id!==cuenta)throw Error('Solo pueden entrar los participantes.');
+    const puedeEnviar=['pendiente','aprobada'].includes(r.status)&&p.status!=='adoptado';
+    chatAdopcionActivo={id,puedeEnviar};
+    limiteMensajesAdopcion=50;
+    raiz.innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+      <div class="modal adoption-chat-modal" role="dialog" aria-modal="true" aria-labelledby="adoptionChatTitle">
+        <div class="modal-head"><h2 id="adoptionChatTitle">💬 Adopción de ${escapeHtml(p.name)}</h2><button type="button" class="close" onclick="closeModal()" aria-label="Cerrar conversación">✕</button></div>
+        <p class="adoption-chat-caption">Chat privado entre el albergue y el solicitante. Confirmen requisitos, visitas y entrega. Evita compartir información financiera o enviar pagos por aquí.</p>
+        <div class="chat-shell"><div class="chat-messages" id="adoptionChatMessages" aria-live="polite">Cargando mensajes...</div>
+        ${puedeEnviar?`<form class="chat-compose" onsubmit="enviarChatAdopcion(event)"><textarea id="adoptionChatTexto" rows="2" maxlength="2000" required enterkeyhint="send" onkeydown="manejarEnterChat(event)" placeholder="Escribe un mensaje..."></textarea><button type="submit" class="btn">Enviar</button></form>`:'<p class="chat-hint">Este chat está cerrado para nuevos mensajes. Puedes consultar su historial.</p>'}
+        </div><p class="chat-hint">Enter para enviar · Shift + Enter para salto de línea.</p>
+        <p class="adoption-chat-error hidden" role="alert" id="adoptionChatError"></p>
+      </div></div>`;
+    await cargarChatAdopcion();
+    if(chatAdopcionActivo?.id!==id)return;
+    intervaloChatAdopcion=setInterval(()=>{
+      if(chatAdopcionActivo?.id!==id||!document.getElementById('adoptionChatMessages')){detenerChatAdopcion();return;}
+      if(!document.hidden)cargarChatAdopcion(true);
+    },7000);
+  }catch(err){
+    if(cuenta===usuarioId&&sesion===versionSesionPatitas&&document.getElementById('adoptionChatLoader')){
+      detenerChatAdopcion();
+      raiz.innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><p>No se pudo abrir el chat: ${escapeHtml(err.message)}</p><button class="btn light" onclick="closeModal()">Cerrar</button></div></div>`;
+    }
+  }
+}
+async function cargarChatAdopcion(silencioso=false,conservarPosicion=false){
+  const id=chatAdopcionActivo?.id;
+  const destino=document.getElementById('adoptionChatMessages');
+  if(!id||!destino||!usuarioId||chatAdopcionCargando)return;
+  chatAdopcionCargando=true;
+  const cuenta=usuarioId,sesion=versionSesionPatitas;
+  try{
+    const {data,error}=await supabaseClient.from('adoption_chat_messages')
+      .select('id,sender_id,content,created_at,read_at').eq('request_id',id)
+      .order('created_at',{ascending:false}).limit(limiteMensajesAdopcion+1);
+    if(error)throw error;
+    if(chatAdopcionActivo?.id!==id||cuenta!==usuarioId||sesion!==versionSesionPatitas||
+       document.getElementById('adoptionChatMessages')!==destino)return;
+    const cercaFinal=destino.scrollHeight-destino.scrollTop-destino.clientHeight<70;
+    const alturaAntes=destino.scrollHeight,scrollAntes=destino.scrollTop;
+    const hayAntiguos=(data||[]).length>limiteMensajesAdopcion;
+    const mensajes=(data||[]).slice(0,limiteMensajesAdopcion).reverse();
+    const html=(hayAntiguos?'<div class="chat-hint"><button type="button" class="btn light small" onclick="cargarAnterioresChatAdopcion()">↑ Cargar 50 mensajes anteriores</button></div>':'')+
+      (mensajes.length?mensajes.map(m=>`<div class="chat-bubble ${m.sender_id===cuenta?'mine':''}"><p>${escapeHtml(m.content)}</p><small>${new Date(m.created_at).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${m.sender_id===cuenta?` · ${m.read_at?'Leído ✓✓':'Enviado ✓'}`:''}</small></div>`).join(''):'<div class="empty">Todavía no hay mensajes. Inicia la conversación para coordinar la adopción.</div>');
+    if(destino.innerHTML!==html){
+      destino.innerHTML=html;
+      if(conservarPosicion)destino.scrollTop=scrollAntes+(destino.scrollHeight-alturaAntes);
+      else if(!silencioso||cercaFinal)destino.scrollTop=destino.scrollHeight;
+      else destino.scrollTop=scrollAntes;
+    }
+    const pendientes=mensajes.filter(m=>m.sender_id!==cuenta&&!m.read_at).map(m=>m.id);
+    if(pendientes.length){
+      const {error:errLeidos}=await supabaseClient.from('adoption_chat_messages')
+        .update({read_at:new Date().toISOString()}).eq('request_id',id)
+        .neq('sender_id',cuenta).is('read_at',null).in('id',pendientes);
+      if(errLeidos)console.warn('No se pudieron marcar mensajes de adopción como leídos:',errLeidos);
+      else if(['mis solicitudes','solicitudes'].includes(activePage))cargarNoLeidosAdopcion([id]);
+    }
+  }catch(err){
+    if(!silencioso&&document.getElementById('adoptionChatMessages')===destino)
+      destino.innerHTML=`<p class="empty">No se pudieron cargar los mensajes: ${escapeHtml(err.message)}</p>`;
+    else console.warn('No se pudo actualizar el chat de adopción:',err);
+  }finally{chatAdopcionCargando=false;}
+}
+function cargarAnterioresChatAdopcion(){
+  if(!chatAdopcionActivo||chatAdopcionCargando)return;
+  limiteMensajesAdopcion+=50;
+  cargarChatAdopcion(false,true);
+}
+async function enviarChatAdopcion(e){
+  e.preventDefault();
+  const chat=chatAdopcionActivo,cuenta=usuarioId;
+  const input=document.getElementById('adoptionChatTexto');
+  const mensaje=input?.value.trim()||'';
+  const errorUI=document.getElementById('adoptionChatError');
+  const boton=e.submitter||e.currentTarget.querySelector('button[type="submit"]');
+  if(!chat?.puedeEnviar||!cuenta||!mensaje||mensaje.length>2000||boton?.disabled)return;
+  if(boton)boton.disabled=true;
+  if(errorUI)errorUI.classList.add('hidden');
+  try{
+    const {data:auth,error:authError}=await supabaseClient.auth.getUser();
+    if(authError||auth?.user?.id!==cuenta)throw Error('Debes iniciar sesión con tu cuenta.');
+    const {error}=await supabaseClient.from('adoption_chat_messages')
+      .insert({request_id:chat.id,sender_id:cuenta,content:mensaje});
+    if(error)throw error;
+    if(chatAdopcionActivo?.id===chat.id&&input){input.value='';await cargarChatAdopcion();}
+  }catch(err){
+    if(errorUI){errorUI.textContent='No se pudo enviar: '+err.message;errorUI.classList.remove('hidden');}
+  }finally{if(boton)boton.disabled=false;}
+}
+
 function tarjetaSolicitudAdopcion(r,p,esAlbergue){
- return `<article class="adoption-request"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}</article>`;
+ return `<article class="adoption-request"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small><div class="adoption-actions"><button type="button" class="btn light small" onclick="abrirChatAdopcion('${escapeAttr(r.id)}')">💬 ${r.status==='rechazada'||p?.status==='adoptado'?'Ver conversación':'Chat de adopción'} <span class="adoption-chat-unread hidden" data-adoption-chat-count="${escapeAttr(r.id)}"></span></button></div>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}</article>`;
 }
 async function evaluarSolicitudAdopcion(id,estado){
  if(currentRole!=='shelter'||!['aprobada','rechazada'].includes(estado))return;
@@ -2035,7 +2189,7 @@ async function saveNew(e,isPet) {
     }
   }
 }
-function closeModal(){document.getElementById('modalRoot').innerHTML=''}
+function closeModal(){detenerChatAdopcion();document.getElementById('modalRoot').innerHTML=''}
 document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&document.getElementById('modalRoot').children.length){closeModal();}
 });
@@ -2756,12 +2910,18 @@ function iniciarNotificacionesChat() {
   consultarNotificacionesChat();
   consultarNotificacionesNegocio();
   consultarNotificacionesAdopcion();
+  if(['mis solicitudes','solicitudes'].includes(activePage)){
+    const ids=solicitudesAdopcion.map(x=>x.id);if(ids.length)cargarNoLeidosAdopcion(ids);
+  }
   // La campanita de adopciones se actualiza junto con los chats.
   notificacionesPollingId = setInterval(() => {
     if (usuarioId && !document.hidden) {
       consultarNotificacionesChat();
       consultarNotificacionesNegocio();
       consultarNotificacionesAdopcion();
+      if(['mis solicitudes','solicitudes'].includes(activePage)){
+        const ids=solicitudesAdopcion.map(x=>x.id);if(ids.length)cargarNoLeidosAdopcion(ids);
+      }
     }
   }, 12000);
 }
