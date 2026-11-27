@@ -307,6 +307,13 @@ body.patitas-booting .startup-screen{display:flex}
 .startup-reload{background:#a84b07;color:white;border:0;border-radius:12px;padding:10px 18px;font-weight:800}
 @keyframes patitas-girar{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.startup-spinner{animation:none;border-top-color:#a84b07}}
+/* Publicación de avisos: errores accesibles y ayuda en los campos. */
+.aviso-form-help{font-size:12px;color:#596875;line-height:1.5;margin:5px 0 14px}
+.aviso-form-feedback{background:#fff0ee;border:1px solid #edb8b1;color:#a72824;border-radius:12px;padding:11px 13px;margin:12px 0;line-height:1.5;font-size:13px}
+.aviso-form-feedback:focus{outline:2px solid #b53c31;outline-offset:2px}
+.aviso-file-status{font-size:12px;color:#586875;line-height:1.5;margin:6px 0 0;overflow-wrap:anywhere}
+.aviso-file-status.error{color:#ae3029;font-weight:700}
+.field input[aria-invalid="true"],.field select[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:#bd4037;box-shadow:0 0 0 3px #bd40371f}
 </style>
 </head>
 <body class="patitas-booting">
@@ -2162,22 +2169,65 @@ function avisoTarjeta(a) {
     </div>
   </article>`;
 }
+// Usar la fecha local evita que el día cambie por las diferencias de zona horaria.
+function fechaLocalAviso(){
+  const fecha=new Date();
+  return [fecha.getFullYear(),String(fecha.getMonth()+1).padStart(2,'0'),String(fecha.getDate()).padStart(2,'0')].join('-');
+}
+function cambiarEtiquetasAviso(){
+  const esHallazgo=document.getElementById('avTipo')?.value==='encontrada';
+  const lugar=document.getElementById('avLugarLabel');
+  const fecha=document.getElementById('avFechaLabel');
+  if(lugar)lugar.textContent=esHallazgo?'Lugar donde encontraste a la mascota *':'Último lugar donde se vio *';
+  if(fecha)fecha.textContent=esHallazgo?'Fecha del hallazgo *':'Fecha de desaparición *';
+  limpiarErrorNuevoAviso('avTipo');
+}
+function limpiarErrorNuevoAviso(campoId){
+  document.getElementById(campoId)?.removeAttribute('aria-invalid');
+  const mensaje=document.getElementById('avFeedback');
+  if(mensaje){mensaje.classList.add('hidden');mensaje.textContent='';}
+}
+function mostrarErrorNuevoAviso(texto,campoId){
+  const mensaje=document.getElementById('avFeedback');
+  if(mensaje){mensaje.textContent=texto;mensaje.classList.remove('hidden');}
+  const campo=campoId ? document.getElementById(campoId) : null;
+  if(campo){campo.setAttribute('aria-invalid','true');campo.focus();}
+  else if(mensaje)mensaje.focus();
+}
+function avisarFotoSeleccionada(){
+  limpiarErrorNuevoAviso('avFoto');
+  const archivo=document.getElementById('avFoto')?.files?.[0];
+  const etiqueta=document.getElementById('avFotoEstado');
+  if(!etiqueta)return;
+  etiqueta.classList.remove('error');
+  if(!archivo){etiqueta.textContent='Puedes publicar el aviso sin fotografía y adjuntarla después.';return;}
+  try{
+    validarArchivoAviso(archivo);
+    etiqueta.textContent=`Foto lista: ${archivo.name} (${(archivo.size/1024/1024).toFixed(2)} MB).`;
+  }catch(err){
+    etiqueta.classList.add('error');
+    etiqueta.textContent=err.message;
+    mostrarErrorNuevoAviso(err.message,'avFoto');
+  }
+}
 function abrirNuevoAviso() {
   document.getElementById('modalRoot').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal">
-    <div class="modal-head"><h2>Publicar aviso</h2><button class="close" onclick="closeModal()">✕</button></div>
-    <form onsubmit="guardarNuevoAviso(event)">
-      <div class="field"><label>Tipo de aviso</label><select id="avTipo"><option value="perdida">Mascota perdida</option><option value="encontrada">Mascota encontrada</option></select></div>
-      <div class="field"><label>Nombre (opcional)</label><input id="avNombre" maxlength="100"></div>
-      <div class="field"><label>Especie</label><select id="avEspecie" required><option value="Perro">Perro</option><option value="Gato">Gato</option><option value="Otro">Otro</option></select></div>
-      <div class="field"><label>Raza (opcional)</label><input id="avRaza" maxlength="100"></div>
-      <div class="field"><label>Color (opcional)</label><input id="avColor" maxlength="100"></div>
-      <div class="field"><label>Distrito o lugar donde se vio</label><input id="avLugar" required maxlength="200" placeholder="Ej. Miraflores, Lima"></div>
-      <div class="field"><label>Fecha de desaparición o hallazgo</label><input id="avFecha" type="date" required></div>
-      <div class="field"><label>Descripción (opcional)</label><textarea id="avDescripcion" rows="3" maxlength="2000"></textarea></div>
-      <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máximo 5 MB)</label><input id="avFoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+    <div class="modal-head"><h2>Publicar aviso</h2><button type="button" class="close" aria-label="Cerrar formulario" onclick="closeModal()">✕</button></div>
+    <form onsubmit="guardarNuevoAviso(event)" novalidate>
+      <p class="aviso-form-help">Los campos marcados con * son obligatorios. No publiques datos personales ni direcciones de domicilio.</p>
+      <div class="field"><label for="avTipo">Tipo de aviso *</label><select id="avTipo" required onchange="cambiarEtiquetasAviso()"><option value="perdida">Mascota perdida</option><option value="encontrada">Mascota encontrada</option></select></div>
+      <div class="field"><label for="avNombre">Nombre (opcional)</label><input id="avNombre" maxlength="100"></div>
+      <div class="field"><label for="avEspecie">Especie *</label><select id="avEspecie" required onchange="limpiarErrorNuevoAviso('avEspecie')"><option value="Perro">Perro</option><option value="Gato">Gato</option><option value="Otro">Otro</option></select></div>
+      <div class="field"><label for="avRaza">Raza (opcional)</label><input id="avRaza" maxlength="100"></div>
+      <div class="field"><label for="avColor">Color (opcional)</label><input id="avColor" maxlength="100"></div>
+      <div class="field"><label for="avLugar" id="avLugarLabel">Último lugar donde se vio *</label><input id="avLugar" required maxlength="200" placeholder="Ej. Distrito y lugar de referencia" oninput="limpiarErrorNuevoAviso('avLugar')"></div>
+      <div class="field"><label for="avFecha" id="avFechaLabel">Fecha de desaparición *</label><input id="avFecha" type="date" required max="${fechaLocalAviso()}" onchange="limpiarErrorNuevoAviso('avFecha')"></div>
+      <div class="field"><label for="avDescripcion">Descripción (opcional)</label><textarea id="avDescripcion" rows="3" maxlength="2000" placeholder="Señas particulares, collar o circunstancias de la pérdida/hallazgo"></textarea></div>
+      <div class="field"><label for="avFoto">Fotografía (opcional, JPG/PNG/WEBP, máximo 5 MB)</label><input id="avFoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="avisarFotoSeleccionada()"><p id="avFotoEstado" class="aviso-file-status" aria-live="polite">Puedes publicar el aviso sin fotografía y adjuntarla después.</p></div>
+      <p id="avFeedback" class="aviso-form-feedback hidden" role="alert" tabindex="-1"></p>
       <button class="btn" type="submit" style="width:100%">Publicar aviso</button>
     </form></div></div>`;
-  document.getElementById('avFecha').value = new Date().toLocaleDateString('en-CA');
+  document.getElementById('avFecha').value=fechaLocalAviso();
 }
 function validarArchivoAviso(archivo) {
   if(!archivo)return;
@@ -2200,22 +2250,41 @@ async function subirFotoAviso(avisoId,archivo,userId) {
 }
 async function guardarNuevoAviso(e) {
   e.preventDefault();
-  const boton=e.submitter;if(boton)boton.disabled=true;
+  const form=e.currentTarget;
+  const boton=e.submitter || form.querySelector('button[type="submit"]');
+  if(boton?.disabled)return;
+  const archivo=document.getElementById('avFoto').files[0];
+  const registro={report_type:document.getElementById('avTipo').value,
+    pet_name:document.getElementById('avNombre').value.trim()||null,
+    species:document.getElementById('avEspecie').value,
+    breed:document.getElementById('avRaza').value.trim()||null,
+    color:document.getElementById('avColor').value.trim()||null,
+    last_seen_location:document.getElementById('avLugar').value.trim(),
+    event_date:document.getElementById('avFecha').value,
+    description:document.getElementById('avDescripcion').value.trim()||null,
+    status:'activo'};
+  if(!['perdida','encontrada'].includes(registro.report_type)){
+    mostrarErrorNuevoAviso('Selecciona un tipo de aviso válido.','avTipo');return;
+  }
+  if(!['Perro','Gato','Otro'].includes(registro.species)){
+    mostrarErrorNuevoAviso('Selecciona la especie de la mascota.','avEspecie');return;
+  }
+  if(registro.last_seen_location.length<3){
+    mostrarErrorNuevoAviso('Escribe el distrito o lugar donde se vio la mascota (al menos 3 caracteres).','avLugar');return;
+  }
+  if(!registro.event_date){
+    mostrarErrorNuevoAviso('Selecciona la fecha de desaparición o hallazgo.','avFecha');return;
+  }
+  if(registro.event_date>fechaLocalAviso()){
+    mostrarErrorNuevoAviso('La fecha no puede ser posterior a hoy.','avFecha');return;
+  }
+  try{validarArchivoAviso(archivo);}
+  catch(err){mostrarErrorNuevoAviso(err.message,'avFoto');return;}
+  if(boton){boton.disabled=true;boton.textContent='Publicando aviso...';}
   try{
     const {data:{user},error:authError}=await supabaseClient.auth.getUser();
     if(authError||!user)throw new Error('Debes iniciar sesión.');
-    const archivo=document.getElementById('avFoto').files[0];
-    validarArchivoAviso(archivo);
-    const registro={user_id:user.id,report_type:document.getElementById('avTipo').value,
-      pet_name:document.getElementById('avNombre').value.trim()||null,
-      species:document.getElementById('avEspecie').value,
-      breed:document.getElementById('avRaza').value.trim()||null,
-      color:document.getElementById('avColor').value.trim()||null,
-      last_seen_location:document.getElementById('avLugar').value.trim(),
-      event_date:document.getElementById('avFecha').value,
-      description:document.getElementById('avDescripcion').value.trim()||null,
-      status:'activo'};
-    if(!registro.last_seen_location||!registro.event_date)throw new Error('Completa lugar y fecha.');
+    registro.user_id=user.id;
     const {data:aviso,error}=await supabaseClient.from('lost_pets').insert(registro).select('id').single();
     if(error)throw error;
     closeModal();
@@ -2225,8 +2294,8 @@ async function guardarNuevoAviso(e) {
     }
     await cargarAvisos();
     toast('¡Aviso publicado!');
-  }catch(err){alert('No se pudo publicar: '+err.message);}
-  finally{if(boton)boton.disabled=false;}
+  }catch(err){mostrarErrorNuevoAviso('No se pudo publicar: '+err.message);}
+  finally{if(boton && document.contains(boton)){boton.disabled=false;boton.textContent='Publicar aviso';}}
 }
 async function adjuntarFotoAviso(avisoId) {
   const fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='image/jpeg,image/png,image/webp';
