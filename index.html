@@ -1891,4 +1891,1242 @@ async function editarMascota(petId) {
       .eq('owner_id', authData.user.id)
       .single();
     if (error || !mascota) {
-   
+      throw new Error('No se pudo encontrar tu mascota.');
+    }
+    document.getElementById('modalRoot').innerHTML = `
+      <div class="modal-backdrop"
+        onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+          <div class="modal-head">
+            <h2>Editar mascota</h2>
+            <button class="close"
+              onclick="closeModal()">✕</button>
+          </div>
+          <form id="formEditarMascota">
+            <div class="field">
+              <label>Nombre</label>
+              <input id="editName" required maxlength="100">
+            </div>
+            <div class="field">
+              <label>Especie</label>
+              <select id="editSpecies" required>
+                <option value="Perro">Perro</option>
+                <option value="Gato">Gato</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Raza</label>
+              <input id="editBreed" maxlength="100">
+            </div>
+            <div class="field">
+              <label>Edad en años</label>
+              <input id="editAge" type="number" min="0" max="100">
+            </div>
+            <div class="field">
+              <label>Sexo</label>
+              <select id="editSex">
+                <option value="">No especificado</option>
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Descripción</label>
+              <textarea id="editDescription" rows="3"></textarea>
+            </div>
+<div class="field">
+  <label>Ubicación</label>
+  <input id="editLocation" maxlength="150">
+</div>
+<div class="field">
+  <label>📷 Cambiar fotografía</label>
+  <input
+    id="editPhoto"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+  >
+  <small style="color:#64748b">
+    Selecciona una nueva imagen JPG, PNG o WEBP
+    (máximo 5 MB). Si no seleccionas ninguna,
+    se conservará la fotografía actual.
+  </small>
+</div>
+<button class="btn" type="submit"
+  style="width:100%">
+  Guardar cambios
+</button>
+          </form>
+        </div>
+      </div>
+    `;
+    document.getElementById('editName').value = mascota.name || '';
+    document.getElementById('editSpecies').value =
+      ['Perro', 'Gato', 'Otro'].includes(mascota.species)
+        ? mascota.species : 'Otro';
+    document.getElementById('editBreed').value = mascota.breed || '';
+    document.getElementById('editAge').value = mascota.age ?? '';
+    document.getElementById('editSex').value = mascota.sex || '';
+    document.getElementById('editDescription').value =
+      mascota.description || '';
+    document.getElementById('editLocation').value =
+      mascota.location || '';
+    document.getElementById('formEditarMascota')
+      .addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const boton = e.submitter;
+        if (boton) boton.disabled = true;
+        try {
+          const edad = document.getElementById('editAge').value;
+          const cambios = {
+            name: document.getElementById('editName').value.trim(),
+            species: document.getElementById('editSpecies').value,
+            breed: document.getElementById('editBreed').value.trim() || null,
+            age: edad === '' ? null : Number(edad),
+            sex: document.getElementById('editSex').value || null,
+            description:
+              document.getElementById('editDescription').value.trim() || null,
+            location:
+              document.getElementById('editLocation').value.trim() || null
+          };
+          if (!cambios.name) {
+            throw new Error('Ingresa el nombre de la mascota.');
+          }
+          const archivo = document.getElementById('editPhoto')?.files[0];
+          const formatos = ['image/jpeg', 'image/png', 'image/webp'];
+          if (archivo && !formatos.includes(archivo.type)) {
+            throw new Error('La fotografía debe ser JPG, PNG o WEBP.');
+          }
+          if (archivo && archivo.size > 5 * 1024 * 1024) {
+            throw new Error('La fotografía no debe superar los 5 MB.');
+          }
+          const { data: actualizada, error: updateError } =
+            await supabaseClient
+              .from('pets')
+              .update(cambios)
+              .eq('id', petId)
+              .eq('owner_id', authData.user.id)
+              .select('id')
+              .single();
+          if (updateError || !actualizada) {
+            throw updateError || new Error('No se pudo actualizar la mascota.');
+          }
+                    let fotoAnteriorPendiente = false;
+          if (archivo) {
+            try {
+              const { data: fotos, error: errorConsulta } = await supabaseClient
+                .from('pet_photos')
+                .select('id, image_path')
+                .eq('pet_id', petId)
+                .order('created_at', { ascending: false, nullsFirst: false })
+                .limit(1);
+              if (errorConsulta) throw errorConsulta;
+              const principal = fotos[0];
+              const extension = archivo.type === 'image/jpeg'
+                ? 'jpg'
+                : archivo.type === 'image/png' ? 'png' : 'webp';
+              const carpeta = authData.user.id + '/';
+              const ruta = carpeta + crypto.randomUUID() + '.' + extension;
+              const bucket = supabaseClient.storage.from('pet-photos');
+              const { error: errorSubida } = await bucket.upload(ruta, archivo, {
+                contentType: archivo.type
+              });
+              if (errorSubida) throw errorSubida;
+              if (principal) {
+                const { data: reemplazada, error: errorFoto } = await supabaseClient
+                  .from('pet_photos')
+                  .update({ image_path: ruta })
+                  .eq('id', principal.id)
+                  .eq('pet_id', petId)
+                  .eq('image_path', principal.image_path)
+                  .select('id');
+                if (errorFoto) throw errorFoto;
+                if (!reemplazada?.length) {
+                  await bucket.remove([ruta]);
+                  throw new Error('La foto principal cambió. Abre la ficha y vuelve a intentar.');
+                }
+                try {
+                  const rutaAnterior = principal.image_path;
+                  if (rutaAnterior.startsWith(carpeta)) {
+                    const { data: referencias, error: errorReferencias } =
+                      await supabaseClient.from('pet_photos').select('id')
+                        .eq('image_path', rutaAnterior).limit(1);
+                    if (errorReferencias) throw errorReferencias;
+                    if (referencias.length === 0) {
+                      const { data: borradas, error: errorBorrado } =
+                        await bucket.remove([rutaAnterior]);
+                      if (errorBorrado) throw errorBorrado;
+                      fotoAnteriorPendiente = borradas?.length !== 1;
+                    }
+                  }
+                } catch (errorLimpieza) {
+                  console.error('Error al retirar la foto anterior:', errorLimpieza);
+                  fotoAnteriorPendiente = true;
+                }
+              } else {
+                const { error: errorFoto } = await supabaseClient
+                  .from('pet_photos')
+                  .insert({ pet_id: petId, image_path: ruta });
+                if (errorFoto) throw errorFoto;
+              }
+            } catch (errorFoto) {
+              console.error('Error al guardar la foto:', errorFoto);
+              alert('Los datos de la mascota se guardaron, pero no se pudo confirmar la foto nueva. ' + errorFoto.message);
+              await cargarMascotas();
+              return;
+            }
+          }
+          await cargarMascotas();
+          closeModal();
+          renderPage();
+          toast(fotoAnteriorPendiente
+            ? 'Foto actualizada. Queda revisar la foto anterior en Storage.'
+            : '¡Mascota actualizada correctamente!');
+        } catch (error) {
+          alert('No se pudo actualizar: ' + error.message);
+        } finally {
+          if (boton) boton.disabled = false;
+        }
+      });
+  } catch (error) {
+    alert('Error al editar mascota: ' + error.message);
+  }
+}
+function filterProducts(){mostrarCatalogo();}
+
+// ===== AVISOS DE MASCOTAS PERDIDAS / ENCONTRADAS =====
+let avisosPerdidas = [];
+let errorAvisos = '';
+function vistaAvisos() {
+  return `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-head"><h2>🔎 Mascotas perdidas y encontradas</h2></div>
+    <p class="muted">Publica un aviso y ayuda a reunir a una mascota con su familia.</p>
+    <button class="btn" onclick="abrirNuevoAviso()">＋ Publicar aviso</button>
+  </div>
+  <div class="lost-toolbar">
+    <input id="buscarAvisos" placeholder="Buscar por nombre, distrito o descripción" oninput="mostrarAvisos()">
+    <select id="filtroAvisos" onchange="mostrarAvisos()">
+      <option value="todos">Todos los estados</option><option value="activo">Activos</option><option value="resuelto">Resueltos</option>
+    </select>
+    <select id="tipoAvisos" onchange="mostrarAvisos()">
+      <option value="todos">Todos los avisos</option><option value="perdida">Mascotas perdidas</option><option value="encontrada">Mascotas encontradas</option>
+    </select>
+  </div>
+  <div id="resultadoAvisos"><p class="muted">Cargando avisos...</p></div>`;
+}
+async function cargarAvisos() {
+  if(activePage !== 'perdidas') return;
+  const idConsultado=usuarioId, versionConsultada=versionSesionPatitas;
+  const {data,error} = await supabaseClient.from('lost_pets')
+    .select('*,lost_pet_photos(image_path,created_at)')
+    .order('created_at',{ascending:false});
+  if(activePage !== 'perdidas' || idConsultado!==usuarioId || versionConsultada!==versionSesionPatitas)return;
+  errorAvisos = error ? error.message : '';
+  avisosPerdidas = data || [];
+  mostrarAvisos();
+}
+function mostrarAvisos() {
+  const destino = document.getElementById('resultadoAvisos');
+  if(!destino) return;
+  if(errorAvisos){destino.innerHTML=`<div class="panel">No se pudieron cargar los avisos: ${escapeHtml(errorAvisos)}</div>`;return;}
+  const q = (document.getElementById('buscarAvisos')?.value || '').trim().toLowerCase();
+  const estado = document.getElementById('filtroAvisos')?.value || 'todos';
+  const tipo = document.getElementById('tipoAvisos')?.value || 'todos';
+  const lista = avisosPerdidas.filter(a =>
+    (estado==='todos' || a.status===estado) &&
+    (tipo==='todos' || a.report_type===tipo) &&
+    [a.pet_name,a.last_seen_location,a.description,a.species,a.color].join(' ').toLowerCase().includes(q)
+  );
+  destino.innerHTML = lista.length ? `<div class="lost-grid">${lista.map(avisoTarjeta).join('')}</div>`
+    : '<div class="panel empty">No se encontraron avisos con esos filtros.</div>';
+}
+function avisoTarjeta(a) {
+  const fotos = (a.lost_pet_photos || []).slice().sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
+  const url = fotos.length ? supabaseClient.storage.from('pet-photos').getPublicUrl(fotos[0].image_path).data.publicUrl : null;
+  const ilustracion = a.species?.toLowerCase()==='gato'?'🐱':'🐶';
+  const propia = usuarioId && a.user_id===usuarioId;
+  return `<article class="lost-card">
+    <div class="lost-photo">${url?`<img src="${escapeAttr(url)}" alt="Foto de aviso" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${ilustracion}</span>`:ilustracion}</div>
+    <div class="lost-body">
+      <span class="lost-tag ${a.status==='resuelto'?'found':''}">${a.status==='resuelto'?'Encontrada':a.report_type==='encontrada'?'Mascota encontrada':'Mascota perdida'}</span>
+      <h3>${escapeHtml(a.pet_name || a.species || 'Mascota sin nombre')}</h3>
+      <p><strong>Especie:</strong> ${escapeHtml(a.species || 'No indicada')}${a.breed?' · '+escapeHtml(a.breed):''}</p>
+      <p><strong>Lugar:</strong> ${escapeHtml(a.last_seen_location || '')}</p>
+      <p><strong>Fecha:</strong> ${escapeHtml(a.event_date || '')}</p>
+      ${a.color?`<p><strong>Color:</strong> ${escapeHtml(a.color)}</p>`:''}
+      ${a.description?`<p>${escapeHtml(a.description)}</p>`:''}
+      ${propia && a.status==='activo'?`<button class="btn small" onclick="resolverAviso('${escapeAttr(a.id)}')">✓ Marcar como encontrada</button>
+        <button class="btn small light" onclick="adjuntarFotoAviso('${escapeAttr(a.id)}')">📷 Adjuntar foto</button>`:''}
+      ${!propia && a.status==='activo' && a.report_type==='perdida'?`<button type="button" class="btn small" style="margin-top:10px" onclick="contactarDueno('${escapeAttr(a.id)}')">💬 Contactar al dueño</button>`:''}
+      ${propia?`<button type="button" class="btn small" style="background:#dc3545;color:#fff;margin-top:9px" onclick="eliminarAviso('${escapeAttr(a.id)}')">🗑️ Eliminar aviso</button>`:''}
+    </div>
+  </article>`;
+}
+function abrirNuevoAviso() {
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <div class="modal-head"><h2>Publicar aviso</h2><button class="close" onclick="closeModal()">✕</button></div>
+    <form onsubmit="guardarNuevoAviso(event)">
+      <div class="field"><label>Tipo de aviso</label><select id="avTipo"><option value="perdida">Mascota perdida</option><option value="encontrada">Mascota encontrada</option></select></div>
+      <div class="field"><label>Nombre (opcional)</label><input id="avNombre" maxlength="100"></div>
+      <div class="field"><label>Especie</label><select id="avEspecie" required><option value="Perro">Perro</option><option value="Gato">Gato</option><option value="Otro">Otro</option></select></div>
+      <div class="field"><label>Raza (opcional)</label><input id="avRaza" maxlength="100"></div>
+      <div class="field"><label>Color (opcional)</label><input id="avColor" maxlength="100"></div>
+      <div class="field"><label>Distrito o lugar donde se vio</label><input id="avLugar" required maxlength="200" placeholder="Ej. Miraflores, Lima"></div>
+      <div class="field"><label>Fecha de desaparición o hallazgo</label><input id="avFecha" type="date" required></div>
+      <div class="field"><label>Descripción (opcional)</label><textarea id="avDescripcion" rows="3" maxlength="2000"></textarea></div>
+      <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máximo 5 MB)</label><input id="avFoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+      <button class="btn" type="submit" style="width:100%">Publicar aviso</button>
+    </form></div></div>`;
+  document.getElementById('avFecha').value = new Date().toLocaleDateString('en-CA');
+}
+function validarArchivoAviso(archivo) {
+  if(!archivo)return;
+  if(!['image/jpeg','image/png','image/webp'].includes(archivo.type) || archivo.size>5*1024*1024)
+    throw new Error('La foto debe ser JPG, PNG o WEBP y pesar como máximo 5 MB.');
+}
+async function subirFotoAviso(avisoId,archivo,userId) {
+  validarArchivoAviso(archivo);
+  const ext = archivo.type==='image/jpeg'?'jpg':archivo.type==='image/png'?'png':'webp';
+  const ruta = `${userId}/avisos/${crypto.randomUUID()}.${ext}`;
+  const bucket = supabaseClient.storage.from('pet-photos');
+  const {error:subidaError} = await bucket.upload(ruta,archivo,{contentType:archivo.type});
+  if(subidaError)throw subidaError;
+  const {error:fotoError} = await supabaseClient.from('lost_pet_photos').insert({lost_pet_id:avisoId,image_path:ruta});
+  if(fotoError){
+    const {error:limpiezaError}=await bucket.remove([ruta]);
+    if(limpiezaError) console.error('Foto de aviso sin vincular:',ruta,limpiezaError);
+    throw fotoError;
+  }
+}
+async function guardarNuevoAviso(e) {
+  e.preventDefault();
+  const boton=e.submitter;if(boton)boton.disabled=true;
+  try{
+    const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!user)throw new Error('Debes iniciar sesión.');
+    const archivo=document.getElementById('avFoto').files[0];
+    validarArchivoAviso(archivo);
+    const registro={user_id:user.id,report_type:document.getElementById('avTipo').value,
+      pet_name:document.getElementById('avNombre').value.trim()||null,
+      species:document.getElementById('avEspecie').value,
+      breed:document.getElementById('avRaza').value.trim()||null,
+      color:document.getElementById('avColor').value.trim()||null,
+      last_seen_location:document.getElementById('avLugar').value.trim(),
+      event_date:document.getElementById('avFecha').value,
+      description:document.getElementById('avDescripcion').value.trim()||null,
+      status:'activo'};
+    if(!registro.last_seen_location||!registro.event_date)throw new Error('Completa lugar y fecha.');
+    const {data:aviso,error}=await supabaseClient.from('lost_pets').insert(registro).select('id').single();
+    if(error)throw error;
+    closeModal();
+    if(archivo){
+      try{await subirFotoAviso(aviso.id,archivo,user.id);}
+      catch(fotoError){alert('El aviso se publicó, pero la foto no se pudo guardar. Puedes adjuntarla desde el aviso. Detalle: '+fotoError.message);}
+    }
+    await cargarAvisos();
+    toast('¡Aviso publicado!');
+  }catch(err){alert('No se pudo publicar: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+async function adjuntarFotoAviso(avisoId) {
+  const fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='image/jpeg,image/png,image/webp';
+  fileInput.onchange=async()=>{
+    if(!fileInput.files[0])return;
+    try{
+      const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+      if(authError||!user)throw new Error('Debes iniciar sesión.');
+      const {data:aviso,error:avisoError}=await supabaseClient.from('lost_pets').select('id').eq('id',avisoId).eq('user_id',user.id).single();
+      if(avisoError||!aviso)throw new Error('No tienes permiso para modificar el aviso.');
+      await subirFotoAviso(avisoId,fileInput.files[0],user.id);
+      await cargarAvisos();toast('Foto agregada al aviso.');
+    }catch(err){alert('No se pudo adjuntar la foto: '+err.message);}
+  };
+  fileInput.click();
+}
+async function resolverAviso(avisoId) {
+  if(!confirm('¿Confirmas que la mascota fue encontrada y quieres cerrar este aviso?'))return;
+  try{
+    const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!user)throw new Error('Debes iniciar sesión.');
+    const {data,error}=await supabaseClient.from('lost_pets').update({status:'resuelto'})
+      .eq('id',avisoId).eq('user_id',user.id).select('id');
+    if(error)throw error;
+    if(!data?.length)throw new Error('No se pudo actualizar el aviso.');
+    await cargarAvisos();toast('¡Mascota marcada como encontrada!');
+  }catch(err){alert('No se pudo cambiar el estado: '+err.message);}
+}
+
+// Elimina únicamente un aviso propio. Primero se borra la fila del aviso;
+// la clave foránea elimina automáticamente sus registros en lost_pet_photos.
+// Después se limpian los archivos físicos de Storage, sin afectar otros avisos.
+async function eliminarAviso(avisoId) {
+  if (!confirm('¿Eliminar este aviso y sus fotografías definitivamente? Esta acción no se puede deshacer.')) return;
+  try {
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    const user = authData?.user;
+    if (authError || !user) throw new Error('Debes iniciar sesión.');
+
+    const { data: aviso, error: avisoError } = await supabaseClient
+      .from('lost_pets').select('id').eq('id', avisoId).eq('user_id', user.id).single();
+    if (avisoError || !aviso) throw new Error('No se encontró el aviso o no tienes permiso.');
+
+    const { data: fotos, error: fotosError } = await supabaseClient
+      .from('lost_pet_photos').select('image_path').eq('lost_pet_id', avisoId);
+    if (fotosError) throw fotosError;
+    const carpeta = user.id + '/avisos/';
+    const rutas = (fotos || []).map(f => f.image_path);
+    if (!rutas.every(r => typeof r === 'string' && r.startsWith(carpeta))) {
+      throw new Error('Se detectaron rutas de fotografías inesperadas. El aviso no fue eliminado.');
+    }
+
+    const { data: eliminados, error: deleteError } = await supabaseClient
+      .from('lost_pets').delete().eq('id', avisoId).eq('user_id', user.id).select('id');
+    if (deleteError) throw deleteError;
+    if (!eliminados?.length) throw new Error('El aviso no pudo eliminarse.');
+
+    let limpiezaPendiente = false;
+    const rutasUnicas = [...new Set(rutas)];
+    if (rutasUnicas.length) {
+      try {
+        const { data: borradas, error: storageError } = await supabaseClient.storage
+          .from('pet-photos').remove(rutasUnicas);
+        if (storageError) throw storageError;
+        limpiezaPendiente = borradas?.length !== rutasUnicas.length;
+      } catch (storageError) {
+        console.error('No se pudieron retirar todas las fotografías del aviso:', storageError);
+        limpiezaPendiente = true;
+      }
+    }
+    await cargarAvisos();
+    if (limpiezaPendiente) {
+      alert('El aviso fue eliminado de Supabase, pero quedaron fotografías por revisar en Storage.');
+    } else {
+      toast('¡Aviso eliminado correctamente!');
+    }
+  } catch (error) {
+    console.error('Error al eliminar el aviso:', error);
+    alert('No se pudo eliminar el aviso: ' + error.message);
+  }
+}
+
+
+// ===== NOTIFICACIONES Y CONFIRMACIÓN DE LECTURA =====
+function actualizarIndicadoresChat() {
+  document.querySelectorAll('[data-unread-count]').forEach(etiqueta => {
+    const total = mensajesNoLeidos + mensajesComercialesNoLeidos;
+    etiqueta.textContent = total > 99 ? '99+' : String(total);
+    etiqueta.classList.toggle('hidden', total === 0);
+    etiqueta.setAttribute('aria-label', `${total} mensajes sin leer`);
+  });
+  document.querySelectorAll('[data-chat-unread]').forEach(etiqueta => {
+    const cantidad = noLeidosPorConversacion[etiqueta.dataset.chatUnread] || 0;
+    etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
+    etiqueta.classList.toggle('hidden', cantidad === 0);
+  });
+  document.querySelectorAll('[data-business-unread]').forEach(etiqueta => {
+    const cantidad = noLeidosPorConsulta[etiqueta.dataset.businessUnread] || 0;
+    etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
+    etiqueta.classList.toggle('hidden', cantidad === 0);
+    etiqueta.setAttribute('aria-label', `${cantidad} mensajes comerciales sin leer`);
+  });
+  for(const [selector, cantidad] of [
+    ['[data-business-tab-unread]', mensajesComercialesNoLeidos],
+    ['[data-lost-tab-unread]', mensajesNoLeidos]
+  ]){
+    document.querySelectorAll(selector).forEach(etiqueta => {
+      etiqueta.textContent = cantidad > 99 ? '99+' : String(cantidad);
+      etiqueta.classList.toggle('hidden', cantidad === 0);
+    });
+  }
+}
+// Solo se cuentan mensajes recibidos que todavía no fueron leídos.
+// La función SQL usa SECURITY INVOKER y respeta las reglas RLS de cada cuenta.
+async function consultarNotificacionesNegocio(){
+  if(!usuarioId || notificacionesNegocioConsultando) return;
+  notificacionesNegocioConsultando = true;
+  const consultado = usuarioId;
+  try{
+    const {data,error}=await supabaseClient.rpc('patitas_conteos_consultas_no_leidas');
+    if(error)throw error;
+    if(usuarioId!==consultado)return;
+    const conteos={};
+    (data||[]).forEach(item=>{
+      const cantidad=Number(item.unread_count)||0;
+      if(cantidad>0)conteos[item.inquiry_id]=cantidad;
+    });
+    noLeidosPorConsulta=conteos;
+    mensajesComercialesNoLeidos=Object.values(conteos).reduce((total,n)=>total+n,0);
+    actualizarIndicadoresChat();
+  }catch(error){
+    console.warn('No se pudo consultar las notificaciones de productos:',error);
+  }finally{notificacionesNegocioConsultando=false;}
+}
+function iniciarNotificacionesChat() {
+  if (notificacionesPollingId) clearInterval(notificacionesPollingId);
+  consultarNotificacionesChat();
+  consultarNotificacionesNegocio();
+  // Se actualizan ambas clases de mensajes aunque la bandeja no esté abierta.
+  notificacionesPollingId = setInterval(() => {
+    if (usuarioId && !document.hidden) {
+      consultarNotificacionesChat();
+      consultarNotificacionesNegocio();
+    }
+  }, 12000);
+}
+async function consultarNotificacionesChat() {
+  if (!usuarioId || notificacionesConsultando) return;
+  notificacionesConsultando = true;
+  const usuarioConsultado = usuarioId;
+  try {
+    const {data:chats,error:chatError} = await supabaseClient.from('conversations')
+      .select('id')
+      .or(`owner_id.eq.${usuarioConsultado},finder_id.eq.${usuarioConsultado}`);
+    if (chatError) throw chatError;
+    const ids = (chats || []).map(c => c.id);
+    const conteos = {};
+    if (ids.length) {
+      // Contadores exactos; no dependen del límite de filas mostrado por Supabase.
+      const resultados = await Promise.all(ids.map(async id => {
+        const {count,error} = await supabaseClient.from('messages')
+          .select('id', {count:'exact',head:true})
+          .eq('conversation_id',id)
+          .neq('sender_id',usuarioConsultado)
+          .is('read_at',null);
+        if (error) throw error;
+        return [id,count || 0];
+      }));
+      resultados.forEach(([id,n]) => { conteos[id]=n; });
+    }
+    if (usuarioId !== usuarioConsultado) return;
+    noLeidosPorConversacion = conteos;
+    mensajesNoLeidos = Object.values(conteos).reduce((sum,n) => sum+n,0);
+    actualizarIndicadoresChat();
+  } catch (error) {
+    console.error('No se pudo consultar el contador de mensajes:',error);
+  } finally {
+    notificacionesConsultando = false;
+  }
+}
+async function marcarMensajesLeidos(conversacionId, mensajes) {
+  if (!usuarioId || activePage!=='mensajes' || conversacionActivaId!==conversacionId) return;
+  const pendientes = mensajes.filter(m => m.sender_id !== usuarioId && !m.read_at).map(m => m.id);
+  if (!pendientes.length) return;
+  const usuarioActual = usuarioId;
+  try {
+    const {error} = await supabaseClient.from('messages')
+      .update({read_at:new Date().toISOString()})
+      .eq('conversation_id',conversacionId)
+      .neq('sender_id',usuarioActual)
+      .is('read_at',null)
+      .in('id',pendientes);
+    if (error) throw error;
+    if (usuarioId === usuarioActual) await consultarNotificacionesChat();
+  } catch (error) {
+    console.error('No se pudo marcar como leído:',error);
+  }
+}
+
+// ===== CHAT PRIVADO DE AVISOS (Supabase) =====
+// Un usuario puede contactar únicamente al dueño de un aviso activo de tipo perdida.
+// Los permisos de lectura y escritura se vuelven a comprobar en Supabase mediante RLS.
+function vistaMensajes() {
+  return `<div class="panel chat-intro"><div class="panel-head"><h2>💬 Mis mensajes</h2>
+    <button class="btn light small" type="button" onclick="cargarBandejaMensajesPatitas()">↻ Actualizar</button></div>
+    <p class="muted">Tus conversaciones privadas de mascotas perdidas y consultas a negocios PET.</p>
+    <div class="message-mode-tabs" role="group" aria-label="Tipo de conversaciones">
+      <button type="button" class="${modoMensajesPatitas==='mascotas'?'active':''}" aria-pressed="${modoMensajesPatitas==='mascotas'}" onclick="seleccionarMensajesPatitas('mascotas')">🐾 Mascotas perdidas <span class="chat-unread-badge hidden" data-lost-tab-unread></span></button>
+      <button type="button" class="${modoMensajesPatitas==='negocios'?'active':''}" aria-pressed="${modoMensajesPatitas==='negocios'}" onclick="seleccionarMensajesPatitas('negocios')">🛍️ Productos y servicios <span class="chat-unread-badge hidden" data-business-tab-unread></span></button>
+    </div></div>
+    <div id="chatView"><div class="panel empty">Cargando conversaciones...</div></div>`;
+}
+function iniciarActualizacionChat() {
+  if (chatPollingId) clearInterval(chatPollingId);
+  chatPollingId = setInterval(async () => {
+    if (activePage !== 'mensajes' || !usuarioId || !conversacionActivaId || chatRefreshInProgress) return;
+    chatRefreshInProgress = true;
+    try { await cargarMensajes(true); }
+    finally { chatRefreshInProgress = false; }
+  }, 7000);
+}
+function obtenerParticipante(c) {
+  return c.owner_id === usuarioId ? 'Persona que encontró la mascota' : 'Dueño de la mascota';
+}
+function obtenerTituloChat(c) {
+  const n = c.lost_pets?.pet_name;
+  return n ? `Aviso de ${n}` : (c.lost_pet_id ? 'Aviso de mascota perdida' : 'Aviso eliminado');
+}
+async function cargarConversaciones() {
+  if (activePage !== 'mensajes' || modoMensajesPatitas !== 'mascotas') return;
+  const versionConsultada=versionSesionPatitas, idConsultado=usuarioId;
+  const destino = document.getElementById('chatView');
+  if (!destino) return;
+  conversacionActivaId = null;
+  destino.innerHTML = '<div class="panel empty">Cargando conversaciones...</div>';
+  try {
+    if (!usuarioId) throw new Error('Debes iniciar sesión.');
+    const { data, error } = await supabaseClient.from('conversations')
+      .select('id,owner_id,finder_id,lost_pet_id,created_at,lost_pets(pet_name)')
+      .or(`owner_id.eq.${usuarioId},finder_id.eq.${usuarioId}`)
+      .order('created_at', { ascending:false });
+    if (error) throw error;
+    if (activePage !== 'mensajes' || conversacionActivaId || idConsultado!==usuarioId || versionConsultada!==versionSesionPatitas)return;
+    await consultarNotificacionesChat();
+    if (activePage !== 'mensajes' || conversacionActivaId || idConsultado!==usuarioId || versionConsultada!==versionSesionPatitas)return;
+    destino.innerHTML = data?.length
+      ? `<div class="chat-inbox">${data.map(c => `<button type="button" class="chat-contact" onclick="abrirConversacion('${escapeAttr(c.id)}')">
+           <span class="chat-contact-icon">💬</span><span class="chat-contact-body"><strong>${escapeHtml(obtenerTituloChat(c))}</strong>
+           <small>${escapeHtml(obtenerParticipante(c))} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span class="chat-unread-badge ${noLeidosPorConversacion[c.id]?'':'hidden'}" data-chat-unread="${escapeAttr(c.id)}">${noLeidosPorConversacion[c.id] || ''}</span><span>›</span></button>`).join('')}</div>`
+      : '<div class="panel empty">Todavía no tienes conversaciones. Para iniciar una, entra a Mascotas perdidas y pulsa «Contactar al dueño» en un aviso de otra persona.</div>';
+  } catch (error) {
+    if (activePage === 'mensajes' && !conversacionActivaId)
+      destino.innerHTML = `<div class="panel">No se pudieron cargar las conversaciones: ${escapeHtml(error.message)}</div>`;
+  }
+}
+async function contactarDueno(avisoId) {
+  try {
+    const {data:auth, error:authError} = await supabaseClient.auth.getUser();
+    const user = auth?.user;
+    if (authError || !user) throw new Error('Debes iniciar sesión.');
+    const {data:aviso,error:avisoError} = await supabaseClient.from('lost_pets')
+      .select('id,user_id,report_type,status').eq('id',avisoId).single();
+    if (avisoError || !aviso) throw new Error('Este aviso ya no está disponible.');
+    if (aviso.user_id === user.id) throw new Error('No puedes enviarte mensajes a ti mismo.');
+    if (aviso.report_type !== 'perdida' || aviso.status !== 'activo')
+      throw new Error('Solo puedes iniciar chats desde avisos activos de mascotas perdidas.');
+    let {data:conversacion,error:buscarError} = await supabaseClient.from('conversations')
+      .select('id').eq('lost_pet_id',avisoId).eq('finder_id',user.id).maybeSingle();
+    if (buscarError) throw buscarError;
+    if (!conversacion) {
+      const nuevo = await supabaseClient.from('conversations')
+        .insert({lost_pet_id:avisoId,owner_id:aviso.user_id,finder_id:user.id})
+        .select('id').single();
+      if (nuevo.error) {
+        // Si se pulsó dos veces, otra solicitud pudo haber creado la conversación.
+        if (nuevo.error.code !== '23505') throw nuevo.error;
+        const existente = await supabaseClient.from('conversations').select('id')
+          .eq('lost_pet_id',avisoId).eq('finder_id',user.id).single();
+        if (existente.error) throw existente.error;
+        conversacion = existente.data;
+      } else conversacion = nuevo.data;
+    }
+    navigate('Mensajes');
+    await abrirConversacion(conversacion.id);
+  } catch (error) {
+    alert('No se pudo abrir el chat: ' + error.message);
+  }
+}
+// Paginación: cada chat empieza mostrando 50 mensajes, y permite ampliar de 50 en 50.
+const MENSAJES_POR_PAGINA_PATITAS = 50;
+let limiteMensajesMascotasPatitas = MENSAJES_POR_PAGINA_PATITAS;
+let limiteMensajesNegocioPatitas = MENSAJES_POR_PAGINA_PATITAS;
+let paginaMascotasEnCargaPatitas = false;
+let paginaNegocioEnCargaPatitas = false;
+let solicitudMensajesMascotasPatitas = 0;
+let solicitudMensajesNegocioPatitas = 0;
+
+async function cargarMensajesAnterioresMascotas() {
+  if (paginaMascotasEnCargaPatitas || !conversacionActivaId) return;
+  paginaMascotasEnCargaPatitas = true;
+  const previo = limiteMensajesMascotasPatitas;
+  limiteMensajesMascotasPatitas += MENSAJES_POR_PAGINA_PATITAS;
+  try {
+    const bien = await cargarMensajes(true, true);
+    if (!bien) limiteMensajesMascotasPatitas = previo;
+  } finally {
+    paginaMascotasEnCargaPatitas = false;
+  }
+}
+
+async function cargarMensajesAnterioresNegocio() {
+  if (paginaNegocioEnCargaPatitas || !consultaNegocioActivaId) return;
+  paginaNegocioEnCargaPatitas = true;
+  const previo = limiteMensajesNegocioPatitas;
+  limiteMensajesNegocioPatitas += MENSAJES_POR_PAGINA_PATITAS;
+  try {
+    const bien = await cargarMensajesNegocio(true, true);
+    if (!bien) limiteMensajesNegocioPatitas = previo;
+  } finally {
+    paginaNegocioEnCargaPatitas = false;
+  }
+}
+
+async function abrirConversacion(conversacionId) {
+  // Al entrar desde un aviso, mostrar la pestaña correcta incluso si se usó el chat comercial.
+  if (activePage !== 'mensajes' || modoMensajesPatitas !== 'mascotas') {
+    modoMensajesPatitas = 'mascotas';
+    navigate('Mensajes');
+  }
+  const destino = document.getElementById('chatView');
+  if (!destino) return;
+  conversacionActivaId = conversacionId;
+  limiteMensajesMascotasPatitas = MENSAJES_POR_PAGINA_PATITAS;
+  solicitudMensajesMascotasPatitas++;
+  destino.innerHTML = '<div class="panel empty">Abriendo conversación...</div>';
+  try {
+    const {data:c,error} = await supabaseClient.from('conversations')
+      .select('id,owner_id,finder_id,lost_pet_id,lost_pets(pet_name)').eq('id',conversacionId).single();
+    if (error || !c) throw error || new Error('Conversación no disponible.');
+    if (activePage !== 'mensajes' || conversacionActivaId !== conversacionId) return;
+    destino.innerHTML = `<section class="chat-shell">
+      <div class="chat-header"><button type="button" class="btn light small" onclick="cargarConversaciones()">← Volver</button>
+      <div><strong>${escapeHtml(obtenerTituloChat(c))}</strong><small>${escapeHtml(obtenerParticipante(c))}</small></div></div>
+      <div class="chat-messages" id="chatMessages" aria-live="polite">Cargando mensajes...</div>
+      <form class="chat-compose" onsubmit="enviarMensaje(event)">
+      <textarea id="chatTexto" maxlength="2000" rows="2" enterkeyhint="send" required onkeydown="manejarEnterChat(event)" placeholder="Escribe tu mensaje..."></textarea>
+      <button class="btn" type="submit">Enviar</button></form>
+      <p class="chat-hint">Enter para enviar · Shift + Enter para salto de línea. Por tu seguridad, evita compartir datos personales hasta verificar con quién conversas.</p></section>`;
+    await cargarMensajes();
+    iniciarActualizacionChat();
+  } catch (error) {
+    if (activePage === 'mensajes' && conversacionActivaId === conversacionId)
+      destino.innerHTML = `<div class="panel">Error al abrir conversación: ${escapeHtml(error.message)}<p><button class="btn light small" onclick="cargarConversaciones()">Volver</button></p></div>`;
+  }
+}
+async function cargarMensajes(silencioso = false, conservarPosicion = false) {
+  const id = conversacionActivaId;
+  const destino = document.getElementById('chatMessages');
+  if (activePage !== 'mensajes' || modoMensajesPatitas !== 'mascotas' || !id || !destino) return false;
+  if (paginaMascotasEnCargaPatitas && !conservarPosicion) return false;
+  const sesion = versionSesionPatitas, cuenta = usuarioId;
+  const solicitud = ++solicitudMensajesMascotasPatitas;
+  const cantidad = limiteMensajesMascotasPatitas;
+  try {
+    // Pedimos un mensaje extra para detectar si hay mensajes más antiguos.
+    const {data,error} = await supabaseClient.from('messages')
+      .select('id,sender_id,content,created_at,read_at').eq('conversation_id',id)
+      .order('created_at',{ascending:false}).limit(cantidad + 1);
+    if (error) throw error;
+    if (conversacionActivaId !== id || activePage !== 'mensajes' ||
+        modoMensajesPatitas !== 'mascotas' || document.getElementById('chatMessages') !== destino ||
+        sesion !== versionSesionPatitas || cuenta !== usuarioId ||
+        solicitud !== solicitudMensajesMascotasPatitas) return false;
+    const cercaDelFinal = destino.scrollHeight - destino.scrollTop - destino.clientHeight < 85;
+    const altoAnterior = destino.scrollHeight;
+    const scrollAnterior = destino.scrollTop;
+    const todos = data || [];
+    const hayAnteriores = todos.length > cantidad;
+    const recientes = todos.slice(0, cantidad).reverse();
+    const botonAnterior = hayAnteriores
+      ? '<div class="chat-hint"><button type="button" class="btn light small" onclick="cargarMensajesAnterioresMascotas()">↑ Cargar 50 mensajes anteriores</button></div>'
+      : '';
+    const nuevo = recientes.length
+      ? botonAnterior + recientes.map(m => `<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p>
+      <small>${new Date(m.created_at).toLocaleString('es-PE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}${m.sender_id===usuarioId?` · <span class="chat-message-status">${m.read_at?'Leído ✓✓':'Enviado ✓'}</span>`:''}</small></div>`).join('')
+      : '<div class="empty">Todavía no hay mensajes. ¡Escribe el primero!</div>';
+    if (destino.innerHTML !== nuevo) {
+      destino.innerHTML = nuevo;
+      if (conservarPosicion) destino.scrollTop = scrollAnterior + (destino.scrollHeight - altoAnterior);
+      else if (!silencioso || cercaDelFinal) destino.scrollTop = destino.scrollHeight;
+      else destino.scrollTop = scrollAnterior;
+    }
+    await marcarMensajesLeidos(id, recientes);
+    return true;
+  } catch (error) {
+    if (conservarPosicion && conversacionActivaId === id) toast('No se pudieron cargar mensajes anteriores: ' + error.message);
+    else if (!silencioso && conversacionActivaId === id)
+      destino.innerHTML = `<div class="empty">Error al cargar mensajes: ${escapeHtml(error.message)}</div>`;
+    else console.error('Error al actualizar mensajes:',error);
+    return false;
+  }
+}
+// Enviar desde el teclado en ambos chats de Patitas.
+// Shift + Enter permite saltos de línea. No interfiere con IME ni atajos.
+function manejarEnterChat(event){
+  if(event.key!=='Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey ||
+     event.isComposing || event.keyCode===229 || event.repeat) return;
+  event.preventDefault();
+  const formulario=event.currentTarget.closest('form');
+  const boton=formulario?.querySelector('button[type="submit"]');
+  if(!formulario || !boton || boton.disabled || !formulario.reportValidity()) return;
+  formulario.requestSubmit(boton); // Reutiliza el mismo envío y validaciones que el botón.
+}
+
+async function enviarMensaje(e) {
+  e.preventDefault();
+  const id = conversacionActivaId;
+  const input = document.getElementById('chatTexto');
+  const contenido = input?.value.trim() || '';
+  if (!id || !contenido || contenido.length > 2000) return;
+  const boton = e.submitter;
+  if (boton?.disabled) return;
+  if (boton) boton.disabled = true;
+  try {
+    const {data:auth,error:authError} = await supabaseClient.auth.getUser();
+    if (authError || !auth?.user) throw new Error('Debes iniciar sesión.');
+    const {error} = await supabaseClient.from('messages')
+      .insert({conversation_id:id,sender_id:auth.user.id,content:contenido});
+    if (error) throw error;
+    if (conversacionActivaId === id && input) input.value='';
+    await cargarMensajes();
+    consultarNotificacionesChat();
+  } catch (error) { alert('No se pudo enviar el mensaje: ' + error.message); }
+  finally { if (boton) boton.disabled=false; }
+}
+
+function toast(msg){
+ const destino=document.getElementById('toastRoot');
+ if(toast.temporizador)clearTimeout(toast.temporizador);
+ destino.replaceChildren();
+ const aviso=document.createElement('div');
+ aviso.className='toast';aviso.setAttribute('role','status');
+ aviso.textContent=String(msg);
+ destino.appendChild(aviso);
+ toast.temporizador=setTimeout(()=>destino.replaceChildren(),3500);
+}
+function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escapeAttr(s){return escapeHtml(s)}
+
+// === CONSULTAS PRIVADAS A NEGOCIOS PET ===
+// Separadas del chat de mascotas perdidas. Las tablas y RLS se instalan con el SQL adjunto.
+function detenerConsultasNegocioPolling(){
+  if(intervaloConsultasNegocio){clearInterval(intervaloConsultasNegocio);intervaloConsultasNegocio=null;}
+}
+function iniciarConsultasNegocioPolling(){
+  detenerConsultasNegocioPolling();
+  intervaloConsultasNegocio=setInterval(()=>{
+    if(document.hidden||!usuarioId||activePage!=='mensajes'||modoMensajesPatitas!=='negocios')return;
+    if(consultaNegocioActivaId)cargarMensajesNegocio(true);
+    else cargarConsultasNegocio(true);
+  },8000);
+}
+function cargarBandejaMensajesPatitas(){
+  if(activePage!=='mensajes')return;
+  if(modoMensajesPatitas==='negocios'){
+    iniciarConsultasNegocioPolling();
+    if(consultaNegocioActivaId)abrirConsultaNegocio(consultaNegocioActivaId);
+    else cargarConsultasNegocio();
+  }else{
+    detenerConsultasNegocioPolling();
+    cargarConversaciones();
+  }
+}
+function seleccionarMensajesPatitas(modo){
+  if(!['mascotas','negocios'].includes(modo)||activePage!=='mensajes')return;
+  modoMensajesPatitas=modo;
+  consultaNegocioActivaId=null;
+  conversacionActivaId=null;
+  detenerConsultasNegocioPolling();
+  renderPage();
+  cargarBandejaMensajesPatitas();
+}
+async function contactarNegocio(listingId){
+  const boton=typeof event!=='undefined'?event?.currentTarget:null;
+  if(boton)boton.disabled=true;
+  try{
+    const {data:auth,error:authError}=await supabaseClient.auth.getUser();
+    const user=auth?.user;
+    if(authError||!user||!usuarioId||usuarioId!==user.id)throw Error('Inicia sesión para contactar al negocio.');
+    const {data:listing,error:listingError}=await supabaseClient.from('business_listings')
+      .select('id,business_id,name,status').eq('id',listingId).eq('status','publicado').single();
+    if(listingError||!listing)throw Error('Esta publicación ya no está disponible.');
+    if(listing.business_id===user.id)throw Error('Esta publicación te pertenece.');
+    const existente=await supabaseClient.from('business_inquiries').select('id')
+      .eq('listing_id',listing.id).eq('buyer_id',user.id).maybeSingle();
+    if(existente.error)throw existente.error;
+    let hilo=existente.data;
+    if(!hilo){
+      const creado=await supabaseClient.from('business_inquiries')
+        .insert({listing_id:listing.id,buyer_id:user.id})
+        .select('id').single();
+      if(creado.error){
+        if(creado.error.code!=='23505')throw creado.error;
+        const recuperado=await supabaseClient.from('business_inquiries').select('id')
+          .eq('listing_id',listing.id).eq('buyer_id',user.id).single();
+        if(recuperado.error)throw recuperado.error;
+        hilo=recuperado.data;
+      }else hilo=creado.data;
+    }
+    modoMensajesPatitas='negocios';
+    consultaNegocioActivaId=hilo.id;
+    navigate('Mensajes');
+  }catch(err){console.error('Consulta comercial:',err);alert('No se pudo contactar al negocio: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+async function cargarConsultasNegocio(silencioso=false){
+  if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId||consultaNegocioCargando)return;
+  const destino=document.getElementById('chatView');if(!destino)return;
+  consultaNegocioCargando=true;
+  if(!silencioso)destino.innerHTML='<div class="panel empty">Cargando consultas...</div>';
+  try{
+    const {data,error}=await supabaseClient.from('business_inquiries')
+      .select('id,listing_name,buyer_id,business_id,created_at')
+      .or(`buyer_id.eq.${usuarioId},business_id.eq.${usuarioId}`)
+      .order('created_at',{ascending:false}).limit(100);
+    if(error)throw error;
+    if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId||document.getElementById('chatView')!==destino)return;
+    const html=(data||[]).length?`<div class="chat-inbox">${data.map(c=>`<button type="button" class="chat-contact" onclick="abrirConsultaNegocio('${escapeAttr(c.id)}')">
+      <span class="chat-contact-icon">🛍️</span><span class="chat-contact-body"><strong>${escapeHtml(c.listing_name)}</strong><small>${c.business_id===usuarioId?'Consulta de cliente':'Consulta al negocio'} · ${new Date(c.created_at).toLocaleDateString('es-PE')}</small></span><span class="chat-unread-badge hidden" data-business-unread="${escapeAttr(c.id)}"></span><span aria-hidden="true">›</span></button>`).join('')}</div>`
+      :'<div class="panel empty">Todavía no tienes consultas comerciales. Para comenzar, visita Productos y pulsa «Consultar al negocio».</div>';
+    if(destino.innerHTML!==html)destino.innerHTML=html;
+    actualizarIndicadoresChat();
+  }catch(err){
+    if(!silencioso&&document.getElementById('chatView')===destino)destino.innerHTML=`<div class="panel">No se pudieron cargar las consultas: ${escapeHtml(err.message)}</div>`;
+    else console.warn('No se actualizaron las consultas:',err);
+  }finally{consultaNegocioCargando=false;}
+}
+async function abrirConsultaNegocio(id){
+  if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'){
+    modoMensajesPatitas='negocios';consultaNegocioActivaId=id;
+    navigate('Mensajes');return;
+  }
+  const destino=document.getElementById('chatView');if(!destino)return;
+  consultaNegocioActivaId=id;
+  limiteMensajesNegocioPatitas = MENSAJES_POR_PAGINA_PATITAS;
+  solicitudMensajesNegocioPatitas++;
+  destino.innerHTML='<div class="panel empty">Abriendo consulta...</div>';
+  try{
+    const {data:c,error}=await supabaseClient.from('business_inquiries')
+      .select('id,listing_name,buyer_id,business_id').eq('id',id).single();
+    if(error||!c)throw error||Error('Consulta no disponible.');
+    if(activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||consultaNegocioActivaId!==id)return;
+    destino.innerHTML=`<section class="chat-shell"><div class="chat-header"><button class="btn light small" type="button" onclick="volverConsultasNegocio()">← Volver</button>
+       <div><strong>🛍️ ${escapeHtml(c.listing_name)}</strong><small>${c.business_id===usuarioId?'Conversación con cliente':'Conversación con negocio PET'}</small></div></div>
+       <div class="business-chat-label">Este chat sirve para consultar disponibilidad, precio, entrega y condiciones. Patitas no procesa compras ni pagos. Evita enviar información financiera.</div>
+       <div class="chat-messages" id="businessChatMessages" aria-live="polite">Cargando mensajes...</div>
+       <form class="chat-compose" onsubmit="enviarMensajeNegocio(event)">
+         <textarea id="businessChatTexto" maxlength="1500" rows="2" enterkeyhint="send" required onkeydown="manejarEnterChat(event)" placeholder="Escribe tu consulta sobre el producto o servicio..."></textarea>
+         <button type="submit" class="btn">Enviar</button>
+       </form><p class="chat-hint">Enter para enviar · Shift + Enter para salto de línea.</p></section>`;
+    await cargarMensajesNegocio();
+    iniciarConsultasNegocioPolling();
+  }catch(err){
+    if(consultaNegocioActivaId===id&&document.getElementById('chatView')===destino)
+      destino.innerHTML=`<div class="panel">No se pudo abrir la conversación: ${escapeHtml(err.message)}<p><button class="btn light small" onclick="volverConsultasNegocio()">Volver</button></p></div>`;
+  }
+}
+function volverConsultasNegocio(){
+  consultaNegocioActivaId=null;
+  cargarConsultasNegocio();
+}
+async function cargarMensajesNegocio(silencioso=false, conservarPosicion=false){
+  const id=consultaNegocioActivaId;
+  const destino=document.getElementById('businessChatMessages');
+  if(!id||activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||!destino)return false;
+  if(paginaNegocioEnCargaPatitas && !conservarPosicion)return false;
+  const sesion=versionSesionPatitas,cuenta=usuarioId;
+  const solicitud=++solicitudMensajesNegocioPatitas;
+  const cantidad=limiteMensajesNegocioPatitas;
+  try{
+    const {data,error}=await supabaseClient.from('business_inquiry_messages')
+      .select('id,sender_id,content,created_at,read_at').eq('inquiry_id',id)
+      .order('created_at',{ascending:false}).limit(cantidad + 1);
+    if(error)throw error;
+    if(consultaNegocioActivaId!==id||document.getElementById('businessChatMessages')!==destino||
+       activePage!=='mensajes'||modoMensajesPatitas!=='negocios'||
+       sesion!==versionSesionPatitas||cuenta!==usuarioId||
+       solicitud!==solicitudMensajesNegocioPatitas)return false;
+    const cercaFinal=destino.scrollHeight-destino.scrollTop-destino.clientHeight<80;
+    const altoAnterior=destino.scrollHeight,scrollAnterior=destino.scrollTop;
+    const todos=data||[], hayAnteriores=todos.length>cantidad;
+    const recientes=todos.slice(0,cantidad).reverse();
+    const botonAnterior=hayAnteriores
+      ? '<div class="chat-hint"><button type="button" class="btn light small" onclick="cargarMensajesAnterioresNegocio()">↑ Cargar 50 mensajes anteriores</button></div>'
+      : '';
+    const html=recientes.length?botonAnterior+recientes.map(m=>`<div class="chat-bubble ${m.sender_id===usuarioId?'mine':''}"><p>${escapeHtml(m.content)}</p><small>${m.sender_id===usuarioId?'Tú · ':'Negocio/cliente · '}${new Date(m.created_at).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></div>`).join('')
+      :'<div class="empty">Todavía no hay mensajes. ¡Escribe tu primera consulta!</div>';
+    if(destino.innerHTML!==html){
+      destino.innerHTML=html;
+      if(conservarPosicion)destino.scrollTop=scrollAnterior+(destino.scrollHeight-altoAnterior);
+      else if(!silencioso||cercaFinal)destino.scrollTop=destino.scrollHeight;
+      else destino.scrollTop=scrollAnterior;
+    }
+    // Se marca como leído únicamente lo recibido de la otra persona.
+    if(!document.hidden)await marcarConsultaNegocioLeida(id,recientes);
+    return true;
+  }catch(err){
+    if(conservarPosicion&&consultaNegocioActivaId===id)toast('No se pudieron cargar mensajes anteriores: '+err.message);
+    else if(!silencioso)destino.innerHTML=`<div class="empty">No se pudieron cargar los mensajes: ${escapeHtml(err.message)}</div>`;
+    else console.warn('No se pudieron actualizar los mensajes del negocio:',err);
+    return false;
+  }
+}
+// Solo el destinatario puede marcar como leído un mensaje de una consulta.
+// Supabase permite UPDATE(read_at) y restringe las filas mediante RLS.
+async function marcarConsultaNegocioLeida(id,mensajes){
+  if(!usuarioId||document.hidden||activePage!=='mensajes'||
+     modoMensajesPatitas!=='negocios'||consultaNegocioActivaId!==id)return;
+  const pendientes=mensajes.filter(m=>m.sender_id!==usuarioId&&!m.read_at).map(m=>m.id);
+  if(!pendientes.length)return;
+  const usuarioActual=usuarioId;
+  try{
+    const {error}=await supabaseClient.from('business_inquiry_messages')
+      .update({read_at:new Date().toISOString()})
+      .eq('inquiry_id',id).neq('sender_id',usuarioActual)
+      .is('read_at',null).in('id',pendientes);
+    if(error)throw error;
+    if(usuarioId!==usuarioActual)return;
+    delete noLeidosPorConsulta[id];
+    mensajesComercialesNoLeidos=Object.values(noLeidosPorConsulta).reduce((s,n)=>s+n,0);
+    actualizarIndicadoresChat();
+    await consultarNotificacionesNegocio();
+  }catch(error){console.warn('No se pudieron marcar las consultas como leídas:',error);}
+}
+async function enviarMensajeNegocio(e){
+  e.preventDefault();
+  const texto=document.getElementById('businessChatTexto');
+  const contenido=texto?.value.trim()||'';
+  const id=consultaNegocioActivaId;
+  if(!id||!contenido||contenido.length>1500)return;
+  const boton=e.submitter;if(boton?.disabled)return;if(boton)boton.disabled=true;
+  try{
+    const {data:auth,error:authError}=await supabaseClient.auth.getUser();
+    if(authError||!auth?.user||auth.user.id!==usuarioId)throw Error('Debes iniciar sesión nuevamente.');
+    const {error}=await supabaseClient.from('business_inquiry_messages')
+      .insert({inquiry_id:id,sender_id:auth.user.id,content:contenido});
+    if(error)throw error;
+    if(consultaNegocioActivaId===id&&texto)texto.value='';
+    await cargarMensajesNegocio();
+    consultarNotificacionesNegocio();
+  }catch(err){alert('No se pudo enviar la consulta: '+err.message);}
+  finally{if(boton)boton.disabled=false;}
+}
+
+// === CATÁLOGO REAL DE NEGOCIOS PET ===
+const categoriasCatalogo=['Alimentos','Salud','Accesorios','Higiene','Servicios','Otros'];
+let catalogoPatitas=[];
+// Actualización del catálogo entre cuentas, sin transmitir datos de productos privados.
+// La tabla catalog_change_signal solo comunica que hay cambios; se vuelve a consultar
+// business_listings con los permisos RLS del usuario conectado.
+let canalCatalogoTiempoReal=null;
+let temporizadorRecargaCatalogo=null;
+let intervaloRespaldoCatalogo=null;
+let secuenciaCargaCatalogo=0;
+function esPaginaCatalogo(){return ['productos y servicios','servicios y productos'].includes(activePage);}
+function programarRecargaCatalogo(){
+  if(!usuarioId||!esPaginaCatalogo()||document.hidden)return;
+  if(temporizadorRecargaCatalogo)clearTimeout(temporizadorRecargaCatalogo);
+  temporizadorRecargaCatalogo=setTimeout(()=>{
+    temporizadorRecargaCatalogo=null;
+    if(usuarioId&&esPaginaCatalogo()&&!document.hidden)cargarCatalogo();
+  },250);
+}
+function iniciarCatalogoTiempoReal(){
+  if(canalCatalogoTiempoReal||!usuarioId)return;
+  try{
+    canalCatalogoTiempoReal=supabaseClient.channel('patitas-catalogo-actualizaciones')
+      .on('postgres_changes',{
+        event:'UPDATE',schema:'public',table:'catalog_change_signal',filter:'id=eq.1'
+      },()=>programarRecargaCatalogo())
+      .subscribe((estado,error)=>{
+        if(estado==='SUBSCRIBED')programarRecargaCatalogo();
+        if(estado==='CHANNEL_ERROR'||estado==='TIMED_OUT')
+          console.warn('Patitas: Realtime del catálogo no disponible, usando actualización periódica.',error||estado);
+      });
+  }catch(error){console.warn('No se pudo activar Realtime del catálogo:',error);}
+  // Respaldo por conexiones móviles inestables y cambios que ocurren sin conexión.
+  if(!intervaloRespaldoCatalogo){
+    intervaloRespaldoCatalogo=setInterval(()=>programarRecargaCatalogo(),45000);
+  }
+}
+function detenerCatalogoTiempoReal(){
+  secuenciaCargaCatalogo++;
+  if(temporizadorRecargaCatalogo){clearTimeout(temporizadorRecargaCatalogo);temporizadorRecargaCatalogo=null;}
+  if(intervaloRespaldoCatalogo){clearInterval(intervaloRespaldoCatalogo);intervaloRespaldoCatalogo=null;}
+  if(canalCatalogoTiempoReal){
+    const canal=canalCatalogoTiempoReal;canalCatalogoTiempoReal=null;
+    supabaseClient.removeChannel(canal).catch(error=>console.warn('No se pudo cerrar el canal de catálogo:',error));
+  }
+  catalogoPatitas=[];
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)programarRecargaCatalogo();
+});
+window.addEventListener('focus',()=>programarRecargaCatalogo());
+function vistaCatalogo(){
+ return `<div class="panel" style="margin-bottom:15px"><div class="panel-head"><div><h2>🛍️ Productos y servicios PET</h2><p class="muted">Publicaciones de negocios autorizados. Patitas no procesa compras ni pagos.</p></div>${currentRole==='business'?'<button type="button" class="btn small" onclick="abrirFormularioCatalogo()">＋ Publicar</button>':''}</div>
+ <div class="toolbar"><input id="productSearch" placeholder="Buscar productos y servicios" oninput="filterProducts()"><select id="catalogKind" onchange="filterProducts()"><option value="">Productos y servicios</option><option value="producto">Productos</option><option value="servicio">Servicios</option></select></div></div>
+ <div id="productResults" class="panel empty" aria-live="polite">Cargando catálogo...</div>`;
+}
+function imagenCatalogo(f){
+ if(!f.image_path)return '';
+ return supabaseClient.storage.from('business-photos').getPublicUrl(f.image_path).data.publicUrl;
+}
+function tarjetaCatalogo(f){
+ const propio=currentRole==='business'&&f.business_id===usuarioId;
+ const foto=imagenCatalogo(f);
+ return `<article class="catalog-card"><div class="catalog-image">${foto?`<img src="${escapeAttr(foto)}" alt="${escapeAttr(f.name)}" loading="lazy">`:'🛍️'}</div><div class="catalog-body"><span class="tag">${escapeHtml(f.kind==='servicio'?'Servicio':'Producto')}</span> ${f.status==='oculto'?'<span class="tag" style="background:#e9edf0;color:#45515b">Oculto</span>':''}
+ <h3>${escapeHtml(f.name)}</h3><p><strong>${escapeHtml(f.category)}</strong></p><p>${escapeHtml(f.description)}</p>
+ <div class="catalog-location">📍 <span><strong>Zona del negocio:</strong> ${escapeHtml(f.location||'Todavía no indicada por el negocio')}</span></div>
+ <strong class="price">S/ ${Number(f.price).toFixed(2)}</strong>
+ ${propio?`<div class="catalog-controls"><button class="btn light small" onclick="abrirFormularioCatalogo('${escapeAttr(f.id)}')">Editar</button><button class="btn outline small" onclick="cambiarEstadoCatalogo('${escapeAttr(f.id)}')">${f.status==='oculto'?'Mostrar':'Ocultar'}</button><button class="btn outline small" onclick="eliminarCatalogo('${escapeAttr(f.id)}')">Eliminar</button></div>`
+ : f.status==='publicado'?`<div class="catalog-controls"><button type="button" class="btn small" onclick="contactarNegocio('${escapeAttr(f.id)}')">💬 Consultar al negocio</button></div>`:''}
+ </div></article>`;
+}
+function mostrarCatalogo(){
+ const destino=document.getElementById('productResults');if(!destino)return;
+ const q=(document.getElementById('productSearch')?.value||'').trim().toLowerCase();
+ const kind=document.getElementById('catalogKind')?.value||'';
+ const lista=catalogoPatitas.filter(f=>
+   (f.status==='publicado'||(currentRole==='business'&&f.business_id===usuarioId))&&
+   (!kind||f.kind===kind)&&
+   (!q||(`${f.name} ${f.category} ${f.location||''} ${f.description||''}`).toLowerCase().includes(q))
+ );
+ destino.className='';destino.innerHTML=lista.length?`<div class="catalog-grid">${lista.map(tarjetaCatalogo).join('')}</div>`:'<div class="panel empty">No hay productos o servicios para mostrar.</div>';
+}
+async function cargarCatalogo(){
+ const destino=document.getElementById('productResults');if(!destino||!esPaginaCatalogo())return;
+ const secuencia=++secuenciaCargaCatalogo;
+ try{
+  let consulta=supabaseClient.from('business_listings')
+    .select('id,business_id,kind,name,category,description,location,price,image_path,status,created_at')
+    .order('created_at',{ascending:false}).limit(100);
+  // Las publicaciones ocultas pertenecen solo a la vista del negocio propietario.
+  // La protección real también requiere RLS en Supabase.
+  consulta=(currentRole==='business'&&usuarioId)
+    ? consulta.or(`status.eq.publicado,business_id.eq.${usuarioId}`)
+    : consulta.eq('status','publicado');
+  const {data,error}=await consulta;
+  if(error)throw error;
+  if(secuencia!==secuenciaCargaCatalogo||document.getElementById('productResults')!==destino||!esPaginaCatalogo())return;
+  catalogoPatitas=data||[];mostrarCatalogo();
+ }catch(err){console.error('Error en catálogo',err);if(secuencia===secuenciaCargaCatalogo&&document.getElementById('productResults')===destino){destino.className='panel empty';destino.textContent='No se pudo cargar el catálogo. Comprueba la conexión con Supabase.';}}
+}
+function abrirFormularioCatalogo(id){
+ if(currentRole!=='business'){alert('Solo los negocios autorizados pueden publicar.');return;}
+ const f=id?catalogoPatitas.find(x=>x.id===id):null;
+ if(id&&!f)return;
+ const opciones=categoriasCatalogo.map(c=>`<option value="${c}" ${f?.category===c?'selected':''}>${c}</option>`).join('');
+ document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h2>${f?'Editar publicación':'Publicar producto o servicio'}</h2><button class="close" type="button" onclick="closeModal()">✕</button></div>
+ <form onsubmit="guardarCatalogo(event, '${escapeAttr(id||'')}')">
+ <div class="field"><label>Tipo</label><select id="catalogFormKind"><option value="producto" ${f?.kind==='producto'?'selected':''}>Producto</option><option value="servicio" ${f?.kind==='servicio'?'selected':''}>Servicio</option></select></div>
+ <div class="field"><label>Nombre</label><input id="catalogFormName" required minlength="3" maxlength="120" value="${escapeAttr(f?.name||'')}"></div>
+ <div class="field"><label>Categoría</label><select id="catalogFormCategory">${opciones}</select></div>
+ <div class="field"><label for="catalogFormLocation">📍 Zona del negocio (distrito y ciudad)</label><input id="catalogFormLocation" type="text" required maxlength="160" value="${escapeAttr(f?.location||'')}" placeholder="Ej.: Los Olivos, Lima"><small class="muted">Se mostrará públicamente. Indica solo la zona comercial, no tu dirección particular.</small></div>
+ <div class="field"><label>Precio en soles (S/)</label><input id="catalogFormPrice" type="number" step="0.01" min="0" max="999999.99" required value="${f?escapeAttr(f.price):''}" placeholder="Ej.: 35.00"></div>
+ <div class="field"><label>Descripción</label><textarea id="catalogFormDescription" required minlength="10" maxlength="2000" rows="4">${escapeHtml(f?.description||'')}</textarea></div>
+ <div class="field"><label>Fotografía (opcional, JPG/PNG/WEBP, máx. 5 MB)</label><input id="catalogFormImage" type="file" accept="image/jpeg,image/png,image/webp"></div>
+ <p class="muted" style="font-size:12px">Las fotografías son públicas. No publiques imágenes ni datos personales sin permiso. ${f?.image_path?'Si eliges una nueva fotografía, reemplazará la anterior.':''}</p>
+ <button class="btn" type="submit" style="width:100%">Guardar publicación</button></form></div></div>`;
+}
+async function guardarCatalogo(e,id){
+ e.preventDefault();if(currentRole!=='business')return;
+ const boton=e.submitter;if(boton)boton.disabled=true;
+ let subidaNueva=null;
+ try{
+  const {data:auth,error:authError}=await supabaseClient.auth.getUser();if(authError||!auth?.user||auth.user.id!==usuarioId)throw Error('Inicia sesión nuevamente.');
+  const anterior=id?catalogoPatitas.find(f=>f.id===id&&f.business_id===usuarioId):null;
+  if(id&&!anterior)throw Error('No puedes editar esta publicación.');
+  const archivo=document.getElementById('catalogFormImage').files[0];
+  if(archivo){
+   if(!['image/jpeg','image/png','image/webp'].includes(archivo.type)||archivo.size>5*1024*1024)throw Error('Usa una imagen JPG, PNG o WEBP de máximo 5 MB.');
+   const ext=archivo.type==='image/jpeg'?'jpg':archivo.type==='image/png'?'png':'webp';
+   subidaNueva=`${usuarioId}/${crypto.randomUUID()}.${ext}`;
+   const {error:upError}=await supabaseClient.storage.from('business-photos').upload(subidaNueva,archivo,{contentType:archivo.type});if(upError)throw upError;
+  }
+  const payload={kind:document.getElementById('catalogFormKind').value,name:document.getElementById('catalogFormName').value.trim(),category:document.getElementById('catalogFormCategory').value,location:document.getElementById('catalogFormLocation').value.trim(),price:Number(document.getElementById('catalogFormPrice').value),description:document.getElementById('catalogFormDescription').value.trim(),updated_at:new Date().toISOString()};
+  if(subidaNueva)payload.image_path=subidaNueva;
+  if(payload.name.length<3||payload.description.length<10||payload.location.length<3||payload.location.length>160||!Number.isFinite(payload.price)||payload.price<0)throw Error('Revisa nombre, descripción, zona del negocio y precio.');
+  let res;
+  if(id)res=await supabaseClient.from('business_listings').update(payload).eq('id',id).eq('business_id',usuarioId).select('id');
+  else res=await supabaseClient.from('business_listings').insert({...payload,business_id:usuarioId}).select('id');
+  if(res.error)throw res.error;
+  if(!res.data?.length)throw Error('La base de datos no autorizó esta operación.');
+  if(subidaNueva&&anterior?.image_path){const {error:rmError}=await supabaseClient.storage.from('business-photos').remove([anterior.image_path]);if(rmError)console.warn('Foto anterior pendiente de limpieza',rmError);}
+  closeModal();toast(id?'Publicación actualizada':'Publicación guardada en Supabase');await cargarCatalogo();
+ }catch(err){
+  if(subidaNueva){await supabaseClient.storage.from('business-photos').remove([subidaNueva]).catch(()=>{});}
+  alert('No se pudo guardar: '+err.message);
+ }finally{if(boton)boton.disabled=false;}
+}
+async function cambiarEstadoCatalogo(id){
+ if(currentRole!=='business')return;
+ const f=catalogoPatitas.find(x=>x.id===id&&x.business_id===usuarioId);if(!f)return;
+ const status=f.status==='publicado'?'oculto':'publicado';
+ const {data,error}=await supabaseClient.from('business_listings').update({status,updated_at:new Date().toISOString()}).eq('id',id).eq('business_id',usuarioId).select('id');
+ if(error||!data?.length){alert('No se pudo actualizar la publicación: '+(error?.message||'Sin permisos'));return;}
+ toast(status==='oculto'?'Publicación oculta':'Publicación visible');await cargarCatalogo();
+}
+async function eliminarCatalogo(id){
+ if(currentRole!=='business')return;
+ const f=catalogoPatitas.find(x=>x.id===id&&x.business_id===usuarioId);if(!f)return;
+ if(!confirm('¿Eliminar esta publicación de forma permanente?'))return;
+ const {data,error}=await supabaseClient.from('business_listings').delete().eq('id',id).eq('business_id',usuarioId).select('id');
+ if(error||!data?.length){alert('No se pudo eliminar: '+(error?.message||'Sin permisos'));return;}
+ if(f.image_path){const {error:rmError}=await supabaseClient.storage.from('business-photos').remove([f.image_path]);if(rmError)console.warn('Imagen pendiente de limpieza',rmError);}
+ toast('Publicación eliminada');await cargarCatalogo();
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&usuarioId){
+    consultarNotificacionesChat();
+    consultarNotificacionesNegocio();
+    if(activePage==='mensajes'&&modoMensajesPatitas==='negocios'&&consultaNegocioActivaId){
+      cargarMensajesNegocio(true);
+    }
+  }
+});
+showHome();
+</script>
+<script>
+  const SUPABASE_URL =
+    "https://drckgajphlfbztroebih.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_XK86ruwBF12IKlacbo6LWg_YiKn6z45";
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+  console.log("Patitas: cliente Supabase inicializado");
+  // El enlace abre una URL exclusiva de recuperación, incluso desde Gmail en otro dispositivo.
+  // Conservar el indicador en la consulta evita depender solo del evento PASSWORD_RECOVERY:
+  // Supabase puede consumir el fragmento de autenticación durante la inicialización.
+  const parametrosRecuperacion = new URLSearchParams(window.location.search);
+  const enlaceRecuperacion = parametrosRecuperacion.get('patitas_reset') === '1';
+  const hashRecuperacion = /(?:^|[&#])type=recovery(?:&|$)/.test(window.location.hash);
+  const errorEnlace = /(?:^|[&#])error(?:=|_code=)/.test(window.location.hash)
+    || parametrosRecuperacion.has('error');
+  supabaseClient.auth.onAuthStateChange((evento, sesion) => {
+    if(evento === 'PASSWORD_RECOVERY' || (enlaceRecuperacion && evento === 'SIGNED_IN')){
+      mostrarCambioContrasena();
+      finalizarCargaInicialPatitas();
+      return;
+    }
+    if(enlaceRecuperacion||hashRecuperacion||errorEnlace||autenticacionManualPatitas||!inicioPatitasFinalizado)return;
+    // INITIAL_SESSION se resuelve en restaurarSesionPatitas para preservar el splash.
+    // No invocar métodos de Supabase dentro del callback de Auth.
+    if(!['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(evento))return;
+    const idNotificado=sesion?.user?.id||null;
+    if(idNotificado===usuarioId)return;
+    setTimeout(()=>{
+      if(!autenticacionManualPatitas && idNotificado!==usuarioId)
+        sincronizarCuentaEntrePestanas(idNotificado).catch(err=>{
+          console.error('No se pudo reconciliar el cambio de cuenta:',err);
+          sincronizacionSesionPatitas=false;
+          document.body.classList.remove('patitas-booting');
+        });
+    },0);
+  });
+  window.addEventListener('focus',()=>{
+    if(!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace)
+      verificarIdentidadAlVolverPatitas();
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace)
+      verificarIdentidadAlVolverPatitas();
+  });
+  if(enlaceRecuperacion || hashRecuperacion || errorEnlace){
+    mostrarCambioContrasena();
+    finalizarCargaInicialPatitas();
+    if(errorEnlace){
+      document.getElementById('resetFeedback').textContent =
+        'Este enlace no es válido o ha expirado. Solicita uno nuevo desde Ingresar.';
+    }
+    // El cliente completa automáticamente la sesión del enlace; no se inicia sesión manualmente.
+    supabaseClient.auth.getSession().then(({data,error}) => {
+      if(error || !data?.session){
+        document.getElementById('resetFeedback').textContent =
+          'No se pudo validar el enlace. Si acabas de abrirlo, vuelve a solicitar otro desde Ingresar.';
+      }
+    }).catch(console.error);
+  }
+  // Los enlaces de recuperación deben conservar su propio formulario.
+  if(!enlaceRecuperacion&&!hashRecuperacion&&!errorEnlace){
+    // Se muestra la portada solo cuando Auth confirma que no hay sesión válida.
+    // finally también cubre errores de red o perfiles no disponibles.
+    restaurarSesionPatitas().finally(finalizarCargaInicialPatitas);
+  }
+
+</script>
+</body>
+</html>
