@@ -332,6 +332,23 @@ body.patitas-booting .startup-screen{display:flex}
 #formPublicacionAdopcion .adoption-form-error:focus{outline:2px solid #b53c31;outline-offset:2px}
 #formPublicacionAdopcion .adoption-photo-note{display:block;margin-top:6px;color:#506271;font-size:12px;line-height:1.45}
 #formPublicacionAdopcion .adoption-photo-note.error{color:#a5221c;font-weight:700}
+/* Notificaciones de adopciones, separadas del chat. */
+.adoption-bell{position:relative;display:inline-grid;place-items:center;flex:none;min-width:42px;height:42px;border-radius:13px;background:#fff2e3;border:1px solid #e8c8a8;color:#874006;font-size:22px}
+.adoption-bell:hover,.adoption-bell:focus-visible{background:#ffe6c4;outline-offset:3px}
+.adoption-bell-count{position:absolute;top:-7px;right:-7px;min-width:21px;height:21px;padding:1px 5px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#c12c36;color:#fff;font-size:11px;font-weight:900;line-height:1}
+.adoption-bell-modal{width:min(580px,100%)}
+.adoption-notices{display:grid;gap:9px;margin-top:12px;max-height:58dvh;overflow-y:auto;overscroll-behavior:contain}
+.adoption-notice{border:1px solid #ecddca;border-radius:13px;padding:13px;background:#fff;overflow-wrap:anywhere}
+.adoption-notice.unread{background:#fff5e9;border-color:#eebf88}
+.adoption-notice strong{display:block;font-size:14px}
+.adoption-notice p{margin:7px 0;color:#455668;font-size:13px;line-height:1.5;white-space:pre-wrap}
+.adoption-notice small{display:block;color:#6e7a85;font-size:11px}
+.adoption-notice-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.adoption-notice-actions button{min-height:38px}
+.adoption-notice-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.adoption-notice-tag{font-size:11px;font-weight:800;color:#995217}
+.adoption-notice-toolbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:540px){.adoption-bell{min-width:36px;width:36px;height:36px;border-radius:11px;font-size:19px}.top-actions{gap:5px}.adoption-notice-modal{padding:18px}.adoption-notices{max-height:56dvh}}
 </style>
 </head>
 <body class="patitas-booting">
@@ -348,7 +365,7 @@ body.patitas-booting .startup-screen{display:flex}
 <div class="app">
 <header class="topbar">
   <div class="brand"><div class="paw">🐾</div><div class="brand-label"><span>Patitas<em>.</em></span><small id="mobileRole" class="mobile-role hidden" aria-label="Tipo de cuenta"></small></div></div>
-  <div class="top-actions"><span class="pill" id="headerRole">Comunidad Petlover</span><button class="btn small" id="headerLogin" onclick="showLogin()">Ingresar</button><button class="header-more hidden" id="headerMore" onclick="abrirMenuExtra()" aria-label="Más secciones" title="Más secciones">☰<span class="chat-unread-badge hidden" data-unread-count aria-label="Mensajes sin leer"></span></button><button class="btn small hidden" id="headerLogout" onclick="logout()">Salir</button></div>
+  <div class="top-actions"><span class="pill" id="headerRole">Comunidad Petlover</span><button class="btn small" id="headerLogin" onclick="showLogin()">Ingresar</button><button class="header-more hidden" id="headerMore" onclick="abrirMenuExtra()" aria-label="Más secciones" title="Más secciones">☰<span class="chat-unread-badge hidden" data-unread-count aria-label="Mensajes sin leer"></span></button><button type="button" class="adoption-bell hidden" id="headerAdoptionBell" onclick="abrirNotificacionesAdopcion()" aria-label="Notificaciones de adopciones" title="Notificaciones de adopciones">🔔<span id="headerAdoptionBadge" class="adoption-bell-count hidden" aria-hidden="true"></span></button><button class="btn small hidden" id="headerLogout" onclick="logout()">Salir</button></div>
 </header>
 <main id="homeView">
   <div class="container">
@@ -516,6 +533,8 @@ let noLeidosPorConversacion = {};
 let mensajesComercialesNoLeidos = 0;
 let noLeidosPorConsulta = {};
 let notificacionesNegocioConsultando = false;
+let notificacionesAdopcionPendientes = 0;
+let notificacionesAdopcionConsultando = false;
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
 let eventosPatitas = [];
@@ -559,7 +578,7 @@ async function cargarMascotas() {
   }
 }
 let products=[]; // Catálogo real cargado desde Supabase
-function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover';document.getElementById('mobileRole').textContent='';document.getElementById('mobileRole').classList.add('hidden')}
+function showHome(){hideViews();document.getElementById('homeView').classList.remove('hidden');document.getElementById('headerLogin').classList.remove('hidden');document.getElementById('headerLogout').classList.add('hidden');document.getElementById('headerMore').classList.add('hidden');document.getElementById('headerAdoptionBell').classList.add('hidden');document.getElementById('headerRole').textContent='Comunidad Petlover';document.getElementById('mobileRole').textContent='';document.getElementById('mobileRole').classList.add('hidden')}
 function showLogin(){hideViews();document.getElementById('loginView').classList.remove('hidden')}
 function hideViews(){
   ['homeView','loginView','registerView','dashboardView','recoverView','resetView']
@@ -587,6 +606,10 @@ function limpiarCuentaPatitas(){
   detenerConsultasNegocioPolling();
   if(chatPollingId){clearInterval(chatPollingId);chatPollingId=null;}
   if(notificacionesPollingId){clearInterval(notificacionesPollingId);notificacionesPollingId=null;}
+  notificacionesAdopcionPendientes=0;
+  notificacionesAdopcionConsultando=false;
+  document.getElementById('headerAdoptionBell').classList.add('hidden');
+  document.getElementById('headerAdoptionBadge').classList.add('hidden');
   usuarioId=null;
   currentUser=null;
   currentRole='owner';
@@ -623,6 +646,7 @@ function mostrarInterfazCuentaPatitas(user,perfil){
   document.getElementById('headerLogin').classList.add('hidden');
   document.getElementById('headerLogout').classList.remove('hidden');
   document.getElementById('headerMore').classList.remove('hidden');
+  document.getElementById('headerAdoptionBell').classList.toggle('hidden',currentRole==='business');
   document.getElementById('headerRole').textContent=roleNames[currentRole];
   document.getElementById('mobileRole').textContent=roleNames[currentRole];
   document.getElementById('mobileRole').classList.remove('hidden');
@@ -2576,6 +2600,106 @@ async function eliminarAviso(avisoId) {
 }
 
 
+// ===== AVISOS DE ADOPCIONES (separados de los contadores de mensajes) =====
+// La base de datos solo autoriza consultar y marcar las notificaciones del usuario autenticado.
+function actualizarCampanaAdopcion(){
+  const boton=document.getElementById('headerAdoptionBell');
+  const badge=document.getElementById('headerAdoptionBadge');
+  if(!boton||!badge)return;
+  const visible=!!usuarioId&&currentRole!=='business';
+  boton.classList.toggle('hidden',!visible);
+  const total=visible?notificacionesAdopcionPendientes:0;
+  badge.classList.toggle('hidden',total===0);
+  badge.textContent=total>99?'99+':String(total);
+  boton.setAttribute('aria-label',total?`${total} notificaciones de adopción sin leer`:'Notificaciones de adopciones, sin pendientes');
+}
+async function consultarNotificacionesAdopcion(){
+  if(!usuarioId||currentRole==='business'||notificacionesAdopcionConsultando)return;
+  notificacionesAdopcionConsultando=true;
+  const idConsultado=usuarioId,versionConsultada=versionSesionPatitas;
+  try{
+    const {count,error}=await supabaseClient.from('adoption_notifications')
+      .select('id',{count:'exact',head:true})
+      .eq('recipient_id',idConsultado).is('read_at',null);
+    if(error)throw error;
+    if(idConsultado!==usuarioId||versionConsultada!==versionSesionPatitas)return;
+    notificacionesAdopcionPendientes=count||0;
+    actualizarCampanaAdopcion();
+  }catch(err){console.warn('No se pudo consultar las notificaciones de adopciones:',err);}
+  finally{notificacionesAdopcionConsultando=false;}
+}
+function abrirNotificacionesAdopcion(){
+  if(!usuarioId||currentRole==='business')return;
+  document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal adoption-bell-modal" role="dialog" aria-modal="true" aria-labelledby="tituloNotificacionesAdopcion">
+    <div class="modal-head"><h2 id="tituloNotificacionesAdopcion">🔔 Notificaciones de adopciones</h2><button type="button" class="close" onclick="closeModal()" aria-label="Cerrar notificaciones">✕</button></div>
+    <p class="muted">Recibe avisos de solicitudes nuevas y de sus resultados.</p>
+    <div class="adoption-notice-toolbar"><button type="button" class="btn light small" onclick="marcarTodasNotificacionesAdopcion()">Marcar todas como leídas</button><button type="button" class="btn light small" onclick="cargarBandejaNotificacionesAdopcion()">↻ Actualizar</button></div>
+    <div id="adoptionNoticesContent" class="adoption-notices" aria-live="polite"><p class="muted">Cargando notificaciones...</p></div>
+  </div></div>`;
+  cargarBandejaNotificacionesAdopcion();
+}
+async function cargarBandejaNotificacionesAdopcion(){
+  const destino=document.getElementById('adoptionNoticesContent');
+  if(!destino||!usuarioId)return;
+  const idConsultado=usuarioId,versionConsultada=versionSesionPatitas;
+  destino.innerHTML='<p class="muted">Cargando notificaciones...</p>';
+  try{
+    const {data,error}=await supabaseClient.from('adoption_notifications')
+      .select('id,kind,title,body,created_at,read_at')
+      .eq('recipient_id',idConsultado).order('created_at',{ascending:false}).limit(50);
+    if(error)throw error;
+    if(idConsultado!==usuarioId||versionConsultada!==versionSesionPatitas||document.getElementById('adoptionNoticesContent')!==destino)return;
+    destino.innerHTML=(data||[]).length?(data||[]).map(aviso=>{
+      const sinLeer=!aviso.read_at;
+      const fecha=new Date(aviso.created_at).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'});
+      return `<article class="adoption-notice ${sinLeer?'unread':''}">
+        <div class="adoption-notice-top"><strong>${escapeHtml(aviso.title)}</strong><span class="adoption-notice-tag">${sinLeer?'Sin leer':'Leída'}</span></div>
+        <p>${escapeHtml(aviso.body)}</p><small>${escapeHtml(fecha)}</small>
+        <div class="adoption-notice-actions">
+          <button type="button" class="btn small" onclick="verSolicitudDesdeNotificacionAdopcion('${escapeAttr(aviso.id)}','${escapeAttr(aviso.kind)}')">Ver solicitud</button>
+          ${sinLeer?`<button type="button" class="btn light small" onclick="marcarNotificacionAdopcionLeida('${escapeAttr(aviso.id)}')">Marcar como leída</button>`:''}
+        </div></article>`;
+    }).join(''):'<p class="empty">Todavía no tienes notificaciones de adopciones. Las nuevas acciones aparecerán aquí.</p>';
+  }catch(err){
+    if(document.getElementById('adoptionNoticesContent')===destino&&idConsultado===usuarioId){
+      destino.innerHTML=`<p class="muted">No se pudieron cargar las notificaciones: ${escapeHtml(err.message)}</p><button type="button" class="btn light small" onclick="cargarBandejaNotificacionesAdopcion()">Reintentar</button>`;
+    }
+  }
+}
+async function marcarNotificacionAdopcionLeida(id){
+  if(!usuarioId)return false;
+  const idConsultado=usuarioId,versionConsultada=versionSesionPatitas;
+  try{
+    const {error}=await supabaseClient.from('adoption_notifications')
+      .update({read_at:new Date().toISOString()})
+      .eq('recipient_id',idConsultado).eq('id',id).is('read_at',null);
+    if(error)throw error;
+    if(idConsultado!==usuarioId||versionConsultada!==versionSesionPatitas)return false;
+    await consultarNotificacionesAdopcion();
+    if(document.getElementById('adoptionNoticesContent'))await cargarBandejaNotificacionesAdopcion();
+    return true;
+  }catch(err){toast('No se pudo marcar la notificación: '+err.message);return false;}
+}
+async function marcarTodasNotificacionesAdopcion(){
+  if(!usuarioId)return;
+  const idConsultado=usuarioId,versionConsultada=versionSesionPatitas;
+  try{
+    const {error}=await supabaseClient.from('adoption_notifications')
+      .update({read_at:new Date().toISOString()})
+      .eq('recipient_id',idConsultado).is('read_at',null);
+    if(error)throw error;
+    if(idConsultado!==usuarioId||versionConsultada!==versionSesionPatitas)return;
+    await consultarNotificacionesAdopcion();
+    await cargarBandejaNotificacionesAdopcion();
+  }catch(err){toast('No se pudieron marcar todas: '+err.message);}
+}
+async function verSolicitudDesdeNotificacionAdopcion(id,tipo){
+  const correcto=await marcarNotificacionAdopcionLeida(id);
+  if(!correcto||!usuarioId)return;
+  closeModal();
+  navigate(tipo==='nueva_solicitud'&&currentRole==='shelter'?'Solicitudes':'Mis solicitudes');
+}
+
 // ===== NOTIFICACIONES Y CONFIRMACIÓN DE LECTURA =====
 function actualizarIndicadoresChat() {
   document.querySelectorAll('[data-unread-count]').forEach(etiqueta => {
@@ -2631,11 +2755,13 @@ function iniciarNotificacionesChat() {
   if (notificacionesPollingId) clearInterval(notificacionesPollingId);
   consultarNotificacionesChat();
   consultarNotificacionesNegocio();
-  // Se actualizan ambas clases de mensajes aunque la bandeja no esté abierta.
+  consultarNotificacionesAdopcion();
+  // La campanita de adopciones se actualiza junto con los chats.
   notificacionesPollingId = setInterval(() => {
     if (usuarioId && !document.hidden) {
       consultarNotificacionesChat();
       consultarNotificacionesNegocio();
+      consultarNotificacionesAdopcion();
     }
   }, 12000);
 }
@@ -3317,6 +3443,7 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&usuarioId){
     consultarNotificacionesChat();
     consultarNotificacionesNegocio();
+    consultarNotificacionesAdopcion();
     if(activePage==='mensajes'&&modoMensajesPatitas==='negocios'&&consultaNegocioActivaId){
       cargarMensajesNegocio(true);
     }
