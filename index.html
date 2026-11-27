@@ -314,6 +314,13 @@ body.patitas-booting .startup-screen{display:flex}
 .aviso-file-status{font-size:12px;color:#586875;line-height:1.5;margin:6px 0 0;overflow-wrap:anywhere}
 .aviso-file-status.error{color:#ae3029;font-weight:700}
 .field input[aria-invalid="true"],.field select[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:#bd4037;box-shadow:0 0 0 3px #bd40371f}
+
+/* Patitas: errores accesibles para registrar mascotas propias. */
+#formNuevaMascota .pet-form-error{border:1px solid #f4aaa0;background:#fff0ed;color:#a5221c;border-radius:12px;padding:12px 13px;margin:13px 0;font-size:13px;line-height:1.5}
+#formNuevaMascota .field input[aria-invalid="true"],
+#formNuevaMascota .field select[aria-invalid="true"]{border-color:#db4437;box-shadow:0 0 0 2px #db443720}
+#formNuevaMascota .pet-photo-note{display:block;margin-top:6px;color:#506271;font-size:12px;line-height:1.45}
+#formNuevaMascota .pet-photo-note.error{color:#a5221c;font-weight:700}
 </style>
 </head>
 <body class="patitas-booting">
@@ -1677,179 +1684,203 @@ const esMiMascota = petId &&
 }
 function feed(emoji,title,desc){return `<div class="feed-item"><div class="emoji">${emoji}</div><div><strong>${title}</strong><p>${desc}</p></div></div>`}
 function productRow(p){return `<div class="product-row"><div class="product-left"><div class="product-emoji">${p.emoji}</div><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.category)}</small></div></div><span class="price">${p.price}</span></div>`}
-function openCreate() {
-  if(currentRole==='business'){abrirFormularioCatalogo();return;}
-  const isPet = true;
-  document.getElementById('modalRoot').innerHTML = `
-    <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
-      <div class="modal">
-        <div class="modal-head">
-          <h2>${isPet ? 'Agregar mascota' : 'Agregar producto o servicio'}</h2>
-          <button class="close" onclick="closeModal()">✕</button>
-        </div>
-        <form onsubmit="saveNew(event, ${isPet})">
-          <div class="field">
-            <label>${isPet ? 'Nombre de la mascota' : 'Nombre del producto o servicio'}</label>
-            <input id="newName" required maxlength="100">
-          </div>
-          ${isPet ? `
-            <div class="field">
-              <label>Especie</label>
-              <select id="newSpecies" required>
-                <option value="Perro">Perro</option>
-                <option value="Gato">Gato</option>
-                <option value="Otro">Otro</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Raza (opcional)</label>
-              <input id="newBreed" maxlength="100">
-            </div>
-            <div class="field">
-              <label>Edad en años (opcional)</label>
-              <input id="newAge" type="number" min="0" max="100">
-            </div>
-            <div class="field">
-              <label>Sexo</label>
-              <select id="newSex">
-                <option value="">No especificado</option>
-                <option value="Macho">Macho</option>
-                <option value="Hembra">Hembra</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Descripción (opcional)</label>
-              <textarea id="newDescription" rows="3"></textarea>
-            </div>
-            <div class="field">
-              <label>Ubicación (opcional)</label>
-              <input id="newLocation" maxlength="150"
-                placeholder="Ej. Lima, Perú">
-            </div>
-            <div class="field">
-  <label>Fotografías de la mascota (opcional)</label>
-  <input
-    id="newPetPhotos"
-    type="file"
-    accept="image/jpeg,image/png,image/webp"
-    multiple
-  >
-  <small class="muted">
-    Puedes seleccionar varias fotografías.
-    Formatos: JPG, PNG o WEBP.
-    Máximo 5 MB por fotografía.
-  </small>
-</div>
-          ` : `
-            <div class="field">
-              <label>Categoría</label>
-              <input id="newDetail" required>
-            </div>
-            <div class="field">
-              <label>Precio</label>
-              <input id="newPrice" required placeholder="S/ 50.00">
-            </div>
-          `}
-          <button class="btn" type="submit" style="width:100%">
-            Guardar publicación
-          </button>
-        </form>
-      </div>
-    </div>
-  `;
-}
-async function saveNew(e, isPet) {
-  e.preventDefault();
-  const boton = e.submitter;
-  if (boton) boton.disabled = true;
-  const name = document.getElementById('newName').value.trim();
-  try {
-    if (isPet) {
-      const { data: authData, error: authError } =
-        await supabaseClient.auth.getUser();
-      if (authError || !authData.user) {
-        throw new Error('Debes iniciar sesión para registrar una mascota.');
-      }
-      const species = document.getElementById('newSpecies').value;
-      const breed = document.getElementById('newBreed').value.trim();
-      const ageValue = document.getElementById('newAge').value;
-      const sex = document.getElementById('newSex').value;
-      const description =
-        document.getElementById('newDescription').value.trim();
-      const location =
-        document.getElementById('newLocation').value.trim();
-      if (!name) {
-        throw new Error('Ingresa el nombre de la mascota.');
-      }
-      const archivos = Array.from(
-  document.getElementById('newPetPhotos')?.files || []
-);
-const formatos = ['image/jpeg', 'image/png', 'image/webp'];
-for (const archivo of archivos) {
-  if (!formatos.includes(archivo.type) || archivo.size > 5 * 1024 * 1024) {
-    throw new Error('Las fotos deben ser JPG, PNG o WEBP y pesar máximo 5 MB.');
+// Errores y ayuda dentro del formulario, sin ventanas emergentes por validaciones.
+function limpiarErrorNuevaMascota(campoId) {
+  const campo = document.getElementById(campoId);
+  if (campo) campo.removeAttribute('aria-invalid');
+  const mensaje = document.getElementById('petNewFormMessage');
+  if (mensaje && (!campoId || mensaje.dataset.campo === campoId)) {
+    mensaje.textContent = '';
+    mensaje.dataset.campo = '';
+    mensaje.classList.add('hidden');
   }
 }
-      const nuevaMascota = {
-        owner_id: authData.user.id,
-        name: name,
-        species: species,
-        breed: breed || null,
-        age: ageValue === '' ? null : Number(ageValue),
-        sex: sex || null,
-        description: description || null,
-        location: location || null,
-        status: 'disponible'
-      };
-      const { data: mascotaGuardada, error } = await supabaseClient
-  .from('pets')
-  .insert(nuevaMascota)
-  .select('id')
-  .single();
-if (error) throw error;
-            let fotosGuardadas = 0;
-      let falloFoto = false;
-      for (const archivo of archivos) {
-        try {
-          const extension = archivo.type === 'image/jpeg'
-            ? 'jpg'
-            : archivo.type === 'image/png' ? 'png' : 'webp';
-          const ruta = `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
-          const { error: errorSubida } = await supabaseClient.storage
-            .from('pet-photos')
-            .upload(ruta, archivo, { contentType: archivo.type });
-          if (errorSubida) throw errorSubida;
-          const { error: errorFoto } = await supabaseClient
-            .from('pet_photos')
-            .insert({
-              pet_id: mascotaGuardada.id,
-              image_path: ruta
-            });
-          if (errorFoto) throw errorFoto;
-          fotosGuardadas++;
-        } catch (errorFoto) {
-          console.error('Error al guardar una foto:', errorFoto);
-          falloFoto = true;
-        }
+function mostrarErrorNuevaMascota(texto, campoId='') {
+  const mensaje = document.getElementById('petNewFormMessage');
+  if (!mensaje) { console.error(texto); return; }
+  mensaje.textContent = texto;
+  mensaje.dataset.campo = campoId;
+  mensaje.classList.remove('hidden');
+  const campo = campoId && document.getElementById(campoId);
+  if (campo) {
+    campo.setAttribute('aria-invalid','true');
+    campo.focus();
+  } else {
+    mensaje.focus();
+  }
+}
+function comprobarFotosNuevaMascota() {
+  const archivos = Array.from(document.getElementById('newPetPhotos')?.files || []);
+  const formatos = ['image/jpeg','image/png','image/webp'];
+  for (const archivo of archivos) {
+    if (!formatos.includes(archivo.type))
+      return 'Solo puedes adjuntar fotos JPG, PNG o WEBP.';
+    if (archivo.size > 5 * 1024 * 1024)
+      return 'Cada fotografía debe pesar como máximo 5 MB.';
+  }
+  return '';
+}
+function informarFotosNuevaMascota() {
+  const input = document.getElementById('newPetPhotos');
+  const ayuda = document.getElementById('newPetPhotosInfo');
+  if (!input || !ayuda) return;
+  const cantidad = input.files?.length || 0;
+  const problema = comprobarFotosNuevaMascota();
+  ayuda.textContent = problema || (cantidad === 0
+    ? 'Puedes dejarlo vacío y añadir fotos después.'
+    : cantidad === 1 ? '1 fotografía seleccionada.' : `${cantidad} fotografías seleccionadas.`);
+  ayuda.classList.toggle('error', Boolean(problema));
+  if (problema) mostrarErrorNuevaMascota(problema,'newPetPhotos');
+}
+function openCreate() {
+  if(currentRole==='business'){abrirFormularioCatalogo();return;}
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newPetModalTitle">
+        <div class="modal-head">
+          <h2 id="newPetModalTitle">Agregar mascota</h2>
+          <button class="close" type="button" aria-label="Cerrar formulario" onclick="closeModal()">✕</button>
+        </div>
+        <p class="muted" style="font-size:13px;margin:10px 0">Los campos marcados con * son obligatorios.</p>
+        <form id="formNuevaMascota" onsubmit="saveNew(event,true)" novalidate>
+          <div class="field">
+            <label for="newName">Nombre de la mascota *</label>
+            <input id="newName" required maxlength="100" autocomplete="off" placeholder="Ej. Max">
+          </div>
+          <div class="field">
+            <label for="newSpecies">Especie *</label>
+            <select id="newSpecies" required>
+              <option value="Perro">Perro</option>
+              <option value="Gato">Gato</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newBreed">Raza (opcional)</label>
+            <input id="newBreed" maxlength="100" placeholder="Ej. Mestizo">
+          </div>
+          <div class="field">
+            <label for="newAge">Edad en años (opcional)</label>
+            <input id="newAge" type="number" min="0" max="100" step="1" placeholder="Ej. 3">
+            <small class="pet-photo-note">Ingresa un número entero de 0 a 100.</small>
+          </div>
+          <div class="field">
+            <label for="newSex">Sexo (opcional)</label>
+            <select id="newSex">
+              <option value="">No especificado</option>
+              <option value="Macho">Macho</option>
+              <option value="Hembra">Hembra</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newDescription">Descripción (opcional)</label>
+            <textarea id="newDescription" rows="3" placeholder="Cuéntanos algo sobre tu mascota"></textarea>
+          </div>
+          <div class="field">
+            <label for="newLocation">Ubicación (opcional)</label>
+            <input id="newLocation" maxlength="150" placeholder="Ej. Lima, Perú">
+          </div>
+          <div class="field">
+            <label for="newPetPhotos">Fotografías de la mascota (opcional)</label>
+            <input id="newPetPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="newPetPhotosHelp newPetPhotosInfo">
+            <small class="pet-photo-note" id="newPetPhotosHelp">JPG, PNG o WEBP. Máximo 5 MB por fotografía. Puedes seleccionar varias.</small>
+            <small class="pet-photo-note" id="newPetPhotosInfo" aria-live="polite">Puedes dejarlo vacío y añadir fotos después.</small>
+          </div>
+          <div id="petNewFormMessage" class="pet-form-error hidden" role="alert" aria-live="assertive" tabindex="-1"></div>
+          <button class="btn" type="submit" style="width:100%">Guardar mascota</button>
+        </form>
+      </div>
+    </div>`;
+  const form = document.getElementById('formNuevaMascota');
+  for (const campo of form.querySelectorAll('input,select,textarea')) {
+    campo.addEventListener('input',()=>limpiarErrorNuevaMascota(campo.id));
+    campo.addEventListener('change',()=>limpiarErrorNuevaMascota(campo.id));
+  }
+  document.getElementById('newPetPhotos').addEventListener('change',informarFotosNuevaMascota);
+  document.getElementById('newName').focus();
+}
+async function saveNew(e,isPet) {
+  e.preventDefault();
+  if (!isPet) { mostrarErrorNuevaMascota('Usa el formulario del catálogo real.'); return; }
+  const boton = e.submitter;
+  if (boton?.disabled) return;
+  const nombre = document.getElementById('newName').value.trim();
+  const species = document.getElementById('newSpecies').value;
+  const breed = document.getElementById('newBreed').value.trim();
+  const campoEdad = document.getElementById('newAge');
+  const ageValue = campoEdad.value;
+  const sex = document.getElementById('newSex').value;
+  const description = document.getElementById('newDescription').value.trim();
+  const location = document.getElementById('newLocation').value.trim();
+  const archivos = Array.from(document.getElementById('newPetPhotos')?.files || []);
+  limpiarErrorNuevaMascota('');
+  if (!nombre) {
+    mostrarErrorNuevaMascota('Escribe el nombre de la mascota.','newName');return;
+  }
+  if (!['Perro','Gato','Otro'].includes(species)) {
+    mostrarErrorNuevaMascota('Selecciona una especie válida.','newSpecies');return;
+  }
+  if (campoEdad.validity.badInput ||
+      (ageValue !== '' && (!Number.isInteger(Number(ageValue)) || Number(ageValue)<0 || Number(ageValue)>100))) {
+    mostrarErrorNuevaMascota('La edad debe ser un número entero entre 0 y 100.','newAge');return;
+  }
+  const problemaFoto = comprobarFotosNuevaMascota();
+  if (problemaFoto) {
+    mostrarErrorNuevaMascota(problemaFoto,'newPetPhotos');return;
+  }
+  if (boton) { boton.disabled=true; boton.textContent='Guardando mascota...'; }
+  try {
+    const {data:authData,error:authError} = await supabaseClient.auth.getUser();
+    if (authError || !authData?.user) throw new Error('Debes iniciar sesión para registrar una mascota.');
+    const nuevaMascota = {
+      owner_id:authData.user.id,
+      name:nombre,
+      species,
+      breed:breed || null,
+      age:ageValue === '' ? null : Number(ageValue),
+      sex:sex || null,
+      description:description || null,
+      location:location || null,
+      status:'disponible'
+    };
+    const {data:mascotaGuardada,error} = await supabaseClient
+      .from('pets').insert(nuevaMascota).select('id').single();
+    if (error) throw error;
+    let fotosGuardadas=0;
+    let falloFoto=false;
+    for (const archivo of archivos) {
+      try {
+        const extension = archivo.type === 'image/jpeg' ? 'jpg'
+          : archivo.type === 'image/png' ? 'png' : 'webp';
+        const ruta = `${authData.user.id}/${crypto.randomUUID()}.${extension}`;
+        const {error:errorSubida} = await supabaseClient.storage.from('pet-photos')
+          .upload(ruta,archivo,{contentType:archivo.type});
+        if (errorSubida) throw errorSubida;
+        const {error:errorFoto} = await supabaseClient.from('pet_photos')
+          .insert({pet_id:mascotaGuardada.id,image_path:ruta});
+        if (errorFoto) throw errorFoto;
+        fotosGuardadas++;
+      } catch (errorFoto) {
+        console.error('Error al guardar una foto:',errorFoto);
+        falloFoto=true;
       }
-      closeModal();
-      if (falloFoto) {
-        alert(
-          `La mascota se guardó con ${fotosGuardadas} de ${archivos.length} fotos. ` +
-          'Ve a Mis mascotas y abre Editar mascota para agregar las que faltan.'
-        );
-      } else {
-        toast('¡Mascota guardada en Supabase!');
-      }
-      await cargarMascotas();    } else {
-      throw new Error('Usa el formulario del catálogo real.');
     }
     closeModal();
+    if (falloFoto) {
+      alert(`La mascota se guardó con ${fotosGuardadas} de ${archivos.length} fotos. `+
+        'Ve a Mis mascotas y abre Editar mascota para agregar las que faltan.');
+    } else {
+      toast('¡Mascota guardada en Supabase!');
+    }
+    await cargarMascotas();
     renderPage();
-  } catch (error) {
-    alert('No se pudo guardar: ' + error.message);
+  } catch(error) {
+    mostrarErrorNuevaMascota('No se pudo guardar: '+error.message);
   } finally {
-    if (boton) boton.disabled = false;
+    if (boton && document.contains(boton)) {
+      boton.disabled=false;
+      boton.textContent='Guardar mascota';
+    }
   }
 }
 function closeModal(){document.getElementById('modalRoot').innerHTML=''}
