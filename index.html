@@ -155,7 +155,7 @@ html{scroll-padding-top:88px}
 .adoption-card-body{padding:17px}.adoption-card-body h3{margin:5px 0 10px}.adoption-card-body p{color:var(--muted);overflow-wrap:anywhere;line-height:1.5;font-size:14px}
 .adoption-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.adoption-actions .btn{flex:1}
 .adoption-status{display:inline-block;border-radius:20px;background:#e8f7ee;color:#218357;font-weight:800;font-size:12px;padding:6px 10px}
-.adoption-status.proceso{background:#fff2df;color:#a65a10}.adoption-status.adoptado{background:#edf0f2;color:#51606b}
+.adoption-status.proceso{background:#fff2df;color:#a65a10}.adoption-status.adoptado{background:#edf0f2;color:#51606b}.adoption-delivered{background:#edf7ef;border-radius:10px;padding:9px 11px;color:#276c49!important}
 .adoption-request{border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0;background:#fff}
 .adoption-request p{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
 @media(max-width:600px){.adoption-grid{grid-template-columns:1fr}.adoption-actions{flex-direction:column}.adoption-actions .btn{width:100%}}
@@ -547,6 +547,8 @@ let notificacionesAdopcionPendientes = 0;
 let notificacionesAdopcionConsultando = false;
 let publicacionesAdopcion = [];
 let solicitudesAdopcion = [];
+// Evita finalizar dos veces una misma adopcion desde botones distintos.
+const adopcionesFinalizandoPatitas=new Set();
 let chatAdopcionActivo = null;
 let intervaloChatAdopcion = null;
 let chatAdopcionCargando = false;
@@ -1337,7 +1339,7 @@ function tarjetaAdopcion(p){
  const propia=usuarioId===p.shelter_id;
  const estado=etiquetaEstadoAdopcion(p.status);
  const estClase=p.status==='adoptado'?' adoptado':p.status==='en_proceso'?' proceso':'';
- return `<article class="adoption-card">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span><h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button><button class="btn small adoption-delete-btn" onclick="eliminarPublicacionAdopcion('${escapeAttr(p.id)}')">🗑️ Eliminar publicación</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
+ return `<article class="adoption-card">${vistaGaleriaAdopcion(p)}<div class="adoption-card-body"><span class="adoption-status${estClase}">${escapeHtml(estado)}</span><h3>${escapeHtml(p.name)}</h3><p><strong>Especie:</strong> ${escapeHtml(p.species)}${p.breed?' · '+escapeHtml(p.breed):''}<br><strong>Edad:</strong> ${p.age===null?'No indicada':escapeHtml(p.age)+' años'}<br><strong>Lugar:</strong> ${escapeHtml(p.location)}</p>${p.description?'<p>'+escapeHtml(p.description)+'</p>':''}<div class="adoption-actions">${propia?`<button class="btn light small" onclick="abrirPublicacionAdopcion('${escapeAttr(p.id)}')">Editar</button><button class="btn light small" onclick="navigate('Solicitudes')">Ver solicitudes</button>${p.status==='en_proceso'?`<button type="button" class="btn small" onclick="finalizarAdopcionPatitas('${escapeAttr(p.id)}')">✅ Finalizar adopción</button>`:''}<button class="btn small adoption-delete-btn" onclick="eliminarPublicacionAdopcion('${escapeAttr(p.id)}')">🗑️ Eliminar publicación</button>`:p.status==='disponible'?`<button class="btn small" onclick="abrirSolicitudAdopcion('${escapeAttr(p.id)}')">❤️ Solicitar adopción</button>`:''}</div></div></article>`;
 }
 function galeriaEditableAdopcion(p){
  const fotos=fotosDeAdopcion(p);
@@ -1404,7 +1406,7 @@ function abrirPublicacionAdopcion(id=null){
      ${campo('Ubicación','location','text',true)}
      <div class="field"><label for="adopt_description">Descripción (opcional)</label>
       <textarea id="adopt_description" maxlength="2000" rows="3">${escapeHtml(p?.description??'')}</textarea></div>
-     ${p?`<div class="field"><label for="adopt_status">Estado</label><select id="adopt_status">${[['disponible','Disponible'],['en_proceso','En proceso'],['adoptado','Adoptado']].map(([v,n])=>`<option value="${v}" ${p.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
+     ${p?`<p class="adoption-photo-note">Estado actual: <strong>${escapeHtml(etiquetaEstadoAdopcion(p.status))}</strong>. El estado cambia al aprobar una solicitud o finalizar la entrega; no se modifica desde este formulario.</p>`:''}
      ${p?galeriaEditableAdopcion(p):''}
      <div class="field"><label for="adopt_photos">${p?'Agregar nuevas fotografías':'Fotografías de la mascota (opcional)'}</label>
       <input type="file" id="adopt_photos" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="adoptPhotosHelp adoptPhotosInfo">
@@ -1474,10 +1476,6 @@ async function guardarPublicacionAdopcion(event,id){
  let fotos;
  try{fotos=validarFotosAdopcion(document.getElementById('adopt_photos')?.files||[]);}
  catch(error){mostrarErrorPublicacionAdopcion(error.message,'adopt_photos');return;}
- const estado=id?valor('status'):null;
- if(id&&!['disponible','en_proceso','adoptado'].includes(estado)){
-  mostrarErrorPublicacionAdopcion('Selecciona un estado válido.','adopt_status');return;
- }
  const cambios={name:nombre,species:especie,breed:valor('breed')||null,
   age:edad===''?null:Number(edad),sex:valor('sex')||null,
   location:ubicacion,description:valor('description')||null};
@@ -1489,7 +1487,7 @@ async function guardarPublicacionAdopcion(event,id){
   let idPost=id;
   if(id){
    const {data,error}=await supabaseClient.from('adoption_posts')
-    .update({...cambios,status:estado}).eq('id',id).eq('shelter_id',usuarioId).select('id');
+    .update(cambios).eq('id',id).eq('shelter_id',usuarioId).select('id');
    if(error)throw error;
    if(!data?.length)throw Error('No tienes permiso para editar esta publicación.');
   }else{
@@ -1774,8 +1772,49 @@ async function enviarChatAdopcion(e){
 }
 
 function tarjetaSolicitudAdopcion(r,p,esAlbergue){
- return `<article class="adoption-request"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small><div class="adoption-actions"><button type="button" class="btn light small" onclick="abrirChatAdopcion('${escapeAttr(r.id)}')">💬 ${r.status==='rechazada'||p?.status==='adoptado'?'Ver conversación':'Chat de adopción'} <span class="adoption-chat-unread hidden" data-adoption-chat-count="${escapeAttr(r.id)}"></span></button></div>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}</article>`;
+ return `<article class="adoption-request"><strong>🐾 ${escapeHtml(p?.name||'Mascota')}</strong><p><strong>Estado:</strong> ${escapeHtml(etiquetaEstadoSolicitud(r.status))}</p>${p?.status==='adoptado'?'<p class="adoption-delivered"><strong>Entrega:</strong> Finalizada · mascota adoptada</p>':''}${r.message?'<p><strong>Mensaje:</strong> '+escapeHtml(r.message)+'</p>':''}<small class="muted">${escapeHtml(new Date(r.created_at).toLocaleDateString('es-PE'))}</small><div class="adoption-actions"><button type="button" class="btn light small" onclick="abrirChatAdopcion('${escapeAttr(r.id)}')">💬 ${r.status==='rechazada'||p?.status==='adoptado'?'Ver conversación':'Chat de adopción'} <span class="adoption-chat-unread hidden" data-adoption-chat-count="${escapeAttr(r.id)}"></span></button></div>${esAlbergue&&r.status==='pendiente'?`<div class="adoption-actions"><button class="btn small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','aprobada')">Aprobar</button><button class="btn light small" onclick="evaluarSolicitudAdopcion('${escapeAttr(r.id)}','rechazada')">Rechazar</button></div>`:''}${esAlbergue&&r.status==='aprobada'&&p?.status==='en_proceso'?`<div class="adoption-actions"><button type="button" class="btn small" onclick="finalizarAdopcionPatitas('${escapeAttr(r.adoption_id)}')">✅ Confirmar entrega y finalizar adopción</button></div>`:''}</article>`;
 }
+// Solo el albergue responsable puede cerrar una adopcion que realmente se entrego.
+// La aprobacion permanece registrada; el chat se conserva pero deja de aceptar mensajes.
+async function finalizarAdopcionPatitas(idPublicacion){
+ if(currentRole!=='shelter'||!usuarioId||!idPublicacion)return;
+ if(adopcionesFinalizandoPatitas.has(idPublicacion))return;
+ adopcionesFinalizandoPatitas.add(idPublicacion);
+ const cuenta=usuarioId,version=versionSesionPatitas;
+ const sesionActual=()=>usuarioId===cuenta&&versionSesionPatitas===version&&currentRole==='shelter';
+ try{
+  const {data:post,error:errorPost}=await supabaseClient.from('adoption_posts')
+   .select('id,name,status,shelter_id').eq('id',idPublicacion).eq('shelter_id',cuenta).maybeSingle();
+  if(errorPost)throw errorPost;
+  if(!sesionActual())return;
+  if(!post)throw Error('La publicación no existe o no pertenece a tu albergue.');
+  if(post.status!=='en_proceso')throw Error('Solo se puede finalizar una adopción que esté En proceso.');
+
+  const {data:aprobadas,error:errorSolicitudes}=await supabaseClient.from('adoption_requests')
+   .select('id').eq('adoption_id',idPublicacion).eq('status','aprobada').limit(1);
+  if(errorSolicitudes)throw errorSolicitudes;
+  if(!sesionActual())return;
+  if(!aprobadas?.length)throw Error('Debe existir una solicitud aprobada antes de finalizar la adopción.');
+
+  const confirmacion=confirm(`¿Confirmas que ${post.name} ya fue entregada a la familia adoptante?\n\nLa publicación pasará a Adoptado y el chat quedará solo para lectura. La solicitud y sus mensajes se conservarán.\n\nEste cambio no se puede deshacer desde Patitas.`);
+  if(!confirmacion||!sesionActual())return;
+
+  // La comprobacion del estado en la actualizacion evita aplicar una entrega dos veces.
+  const {data:actualizado,error:errorActualizar}=await supabaseClient.from('adoption_posts')
+   .update({status:'adoptado'})
+   .eq('id',idPublicacion).eq('shelter_id',cuenta).eq('status','en_proceso')
+   .select('id,status').maybeSingle();
+  if(errorActualizar)throw errorActualizar;
+  if(!sesionActual())return;
+  if(!actualizado)throw Error('La adopción ya cambió de estado o no tienes permiso para finalizarla.');
+  toast('Adopción finalizada. El historial del chat se conserva.');
+  if(['rescatados','solicitudes','mis solicitudes','adopciones'].includes(activePage))await cargarAdopciones();
+ }catch(error){
+  console.error('No se pudo finalizar la adopción:',error);
+  if(sesionActual())alert('No se pudo finalizar la adopción: '+error.message);
+ }finally{adopcionesFinalizandoPatitas.delete(idPublicacion);}
+}
+
 async function evaluarSolicitudAdopcion(id,estado){
  if(currentRole!=='shelter'||!['aprobada','rechazada'].includes(estado))return;
  if(!confirm('¿Seguro que deseas '+(estado==='aprobada'?'aprobar':'rechazar')+' esta solicitud?'))return;
