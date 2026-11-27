@@ -321,6 +321,11 @@ body.patitas-booting .startup-screen{display:flex}
 #formNuevaMascota .field select[aria-invalid="true"]{border-color:#db4437;box-shadow:0 0 0 2px #db443720}
 #formNuevaMascota .pet-photo-note{display:block;margin-top:6px;color:#506271;font-size:12px;line-height:1.45}
 #formNuevaMascota .pet-photo-note.error{color:#a5221c;font-weight:700}
+
+/* Validación accesible y mensajes de ayuda al editar mascotas propias. */
+#formEditarMascota .pet-form-error{border:1px solid #f4aaa0;background:#fff0ed;color:#a5221c;border-radius:12px;padding:12px 13px;margin:13px 0;font-size:13px;line-height:1.5}
+#formEditarMascota .pet-photo-note{display:block;margin-top:6px;color:#506271;font-size:12px;line-height:1.45}
+#formEditarMascota .pet-photo-note.error{color:#a5221c;font-weight:700}
 </style>
 </head>
 <body class="patitas-booting">
@@ -1915,38 +1920,78 @@ petTile(
       ).join('')
     : '<div class="empty">No encontramos mascotas con esos filtros.</div>';
 }
+// Validaciones de edición coherentes con el formulario «Agregar mascota».
+function limpiarErrorEdicionMascota(campoId='') {
+  const formulario = document.getElementById('formEditarMascota');
+  if (!formulario) return;
+  if (campoId) document.getElementById(campoId)?.removeAttribute('aria-invalid');
+  else formulario.querySelectorAll('[aria-invalid="true"]').forEach(c => c.removeAttribute('aria-invalid'));
+  const mensaje = document.getElementById('petEditFormMessage');
+  if (mensaje && (!campoId || mensaje.dataset.campo === campoId)) {
+    mensaje.textContent = '';
+    mensaje.dataset.campo = '';
+    mensaje.classList.add('hidden');
+  }
+}
+function mostrarErrorEdicionMascota(texto, campoId='') {
+  const mensaje = document.getElementById('petEditFormMessage');
+  if (!mensaje) { console.error(texto); return; }
+  mensaje.textContent = texto;
+  mensaje.dataset.campo = campoId;
+  mensaje.classList.remove('hidden');
+  const campo = campoId && document.getElementById(campoId);
+  if (campo) {
+    campo.setAttribute('aria-invalid','true');
+    campo.focus();
+  } else mensaje.focus();
+}
+function validarFotoEdicionMascota() {
+  const archivo = document.getElementById('editPhoto')?.files?.[0];
+  if (!archivo) return '';
+  if (!['image/jpeg','image/png','image/webp'].includes(archivo.type))
+    return 'Solo puedes adjuntar fotos JPG, PNG o WEBP.';
+  if (archivo.size > 5 * 1024 * 1024)
+    return 'La fotografía debe pesar como máximo 5 MB.';
+  return '';
+}
+function informarFotoEdicionMascota() {
+  const ayuda = document.getElementById('editPhotoInfo');
+  const archivo = document.getElementById('editPhoto')?.files?.[0];
+  if (!ayuda) return;
+  const problema = validarFotoEdicionMascota();
+  ayuda.textContent = problema || (archivo
+    ? '1 fotografía seleccionada para reemplazar la principal.'
+    : 'Sin fotografía nueva: se conservará la foto actual.');
+  ayuda.classList.toggle('error',Boolean(problema));
+  if (problema) mostrarErrorEdicionMascota(problema,'editPhoto');
+}
 async function editarMascota(petId) {
   try {
-    const { data: authData, error: authError } =
-      await supabaseClient.auth.getUser();
-    if (authError || !authData.user) {
-      throw new Error('Debes iniciar sesión.');
-    }
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !authData?.user) throw new Error('Debes iniciar sesión.');
     const { data: mascota, error } = await supabaseClient
       .from('pets')
       .select('id, name, species, breed, age, sex, description, location')
       .eq('id', petId)
       .eq('owner_id', authData.user.id)
       .single();
-    if (error || !mascota) {
-      throw new Error('No se pudo encontrar tu mascota.');
-    }
+    if (error || !mascota) throw new Error('No se pudo encontrar tu mascota.');
+
     document.getElementById('modalRoot').innerHTML = `
-      <div class="modal-backdrop"
-        onclick="if(event.target===this)closeModal()">
-        <div class="modal">
+      <div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editPetModalTitle">
           <div class="modal-head">
-            <h2>Editar mascota</h2>
-            <button class="close"
-              onclick="closeModal()">✕</button>
+            <h2 id="editPetModalTitle">Editar mascota</h2>
+            <button class="close" type="button" aria-label="Cerrar formulario" onclick="closeModal()">✕</button>
           </div>
-          <form id="formEditarMascota">
+          <p class="muted" style="font-size:13px;margin:10px 0">Los campos marcados con * son obligatorios.</p>
+          <form id="formEditarMascota" novalidate>
             <div class="field">
-              <label>Nombre</label>
-              <input id="editName" required maxlength="100">
+              <label for="editName">Nombre de la mascota *</label>
+              <input id="editName" required maxlength="100" autocomplete="off">
             </div>
             <div class="field">
-              <label>Especie</label>
+              <label for="editSpecies">Especie *</label>
               <select id="editSpecies" required>
                 <option value="Perro">Perro</option>
                 <option value="Gato">Gato</option>
@@ -1954,15 +1999,16 @@ async function editarMascota(petId) {
               </select>
             </div>
             <div class="field">
-              <label>Raza</label>
+              <label for="editBreed">Raza (opcional)</label>
               <input id="editBreed" maxlength="100">
             </div>
             <div class="field">
-              <label>Edad en años</label>
-              <input id="editAge" type="number" min="0" max="100">
+              <label for="editAge">Edad en años (opcional)</label>
+              <input id="editAge" type="number" min="0" max="100" step="1">
+              <small class="pet-photo-note">Ingresa un número entero entre 0 y 100.</small>
             </div>
             <div class="field">
-              <label>Sexo</label>
+              <label for="editSex">Sexo (opcional)</label>
               <select id="editSex">
                 <option value="">No especificado</option>
                 <option value="Macho">Macho</option>
@@ -1970,86 +2016,78 @@ async function editarMascota(petId) {
               </select>
             </div>
             <div class="field">
-              <label>Descripción</label>
+              <label for="editDescription">Descripción (opcional)</label>
               <textarea id="editDescription" rows="3"></textarea>
             </div>
-<div class="field">
-  <label>Ubicación</label>
-  <input id="editLocation" maxlength="150">
-</div>
-<div class="field">
-  <label>📷 Cambiar fotografía</label>
-  <input
-    id="editPhoto"
-    type="file"
-    accept="image/jpeg,image/png,image/webp"
-  >
-  <small style="color:#64748b">
-    Selecciona una nueva imagen JPG, PNG o WEBP
-    (máximo 5 MB). Si no seleccionas ninguna,
-    se conservará la fotografía actual.
-  </small>
-</div>
-<button class="btn" type="submit"
-  style="width:100%">
-  Guardar cambios
-</button>
+            <div class="field">
+              <label for="editLocation">Ubicación (opcional)</label>
+              <input id="editLocation" maxlength="150">
+            </div>
+            <div class="field">
+              <label for="editPhoto">📷 Cambiar fotografía (opcional)</label>
+              <input id="editPhoto" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="editPhotoHelp editPhotoInfo">
+              <small class="pet-photo-note" id="editPhotoHelp">JPG, PNG o WEBP, máximo 5 MB. Selecciona una foto para reemplazar la principal.</small>
+              <small class="pet-photo-note" id="editPhotoInfo" aria-live="polite">Sin fotografía nueva: se conservará la foto actual.</small>
+            </div>
+            <div id="petEditFormMessage" class="pet-form-error hidden" role="alert" aria-live="assertive" tabindex="-1"></div>
+            <button class="btn" type="submit" style="width:100%">Guardar cambios</button>
           </form>
         </div>
-      </div>
-    `;
+      </div>`;
     document.getElementById('editName').value = mascota.name || '';
     document.getElementById('editSpecies').value =
-      ['Perro', 'Gato', 'Otro'].includes(mascota.species)
-        ? mascota.species : 'Otro';
+      ['Perro','Gato','Otro'].includes(mascota.species) ? mascota.species : 'Otro';
     document.getElementById('editBreed').value = mascota.breed || '';
     document.getElementById('editAge').value = mascota.age ?? '';
     document.getElementById('editSex').value = mascota.sex || '';
-    document.getElementById('editDescription').value =
-      mascota.description || '';
-    document.getElementById('editLocation').value =
-      mascota.location || '';
-    document.getElementById('formEditarMascota')
-      .addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const boton = e.submitter;
-        if (boton) boton.disabled = true;
-        try {
-          const edad = document.getElementById('editAge').value;
-          const cambios = {
-            name: document.getElementById('editName').value.trim(),
-            species: document.getElementById('editSpecies').value,
-            breed: document.getElementById('editBreed').value.trim() || null,
-            age: edad === '' ? null : Number(edad),
-            sex: document.getElementById('editSex').value || null,
-            description:
-              document.getElementById('editDescription').value.trim() || null,
-            location:
-              document.getElementById('editLocation').value.trim() || null
-          };
-          if (!cambios.name) {
-            throw new Error('Ingresa el nombre de la mascota.');
-          }
-          const archivo = document.getElementById('editPhoto')?.files[0];
-          const formatos = ['image/jpeg', 'image/png', 'image/webp'];
-          if (archivo && !formatos.includes(archivo.type)) {
-            throw new Error('La fotografía debe ser JPG, PNG o WEBP.');
-          }
-          if (archivo && archivo.size > 5 * 1024 * 1024) {
-            throw new Error('La fotografía no debe superar los 5 MB.');
-          }
-          const { data: actualizada, error: updateError } =
-            await supabaseClient
-              .from('pets')
-              .update(cambios)
-              .eq('id', petId)
-              .eq('owner_id', authData.user.id)
-              .select('id')
-              .single();
-          if (updateError || !actualizada) {
-            throw updateError || new Error('No se pudo actualizar la mascota.');
-          }
-                    let fotoAnteriorPendiente = false;
+    document.getElementById('editDescription').value = mascota.description || '';
+    document.getElementById('editLocation').value = mascota.location || '';
+
+    const formulario = document.getElementById('formEditarMascota');
+    for (const campo of formulario.querySelectorAll('input,select,textarea')) {
+      campo.addEventListener('input',()=>limpiarErrorEdicionMascota(campo.id));
+      campo.addEventListener('change',()=>limpiarErrorEdicionMascota(campo.id));
+    }
+    document.getElementById('editPhoto').addEventListener('change',informarFotoEdicionMascota);
+    document.getElementById('editName').focus();
+    formulario.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (formulario.dataset.guardando === '1') return;
+      limpiarErrorEdicionMascota();
+      const nombre = document.getElementById('editName').value.trim();
+      const species = document.getElementById('editSpecies').value;
+      const campoEdad = document.getElementById('editAge');
+      const edad = campoEdad.value;
+      if (!nombre) { mostrarErrorEdicionMascota('Escribe el nombre de la mascota.','editName'); return; }
+      if (!['Perro','Gato','Otro'].includes(species)) {
+        mostrarErrorEdicionMascota('Selecciona una especie válida.','editSpecies'); return;
+      }
+      if (campoEdad.validity.badInput ||
+          (edad !== '' && (!Number.isInteger(Number(edad)) || Number(edad) < 0 || Number(edad) > 100))) {
+        mostrarErrorEdicionMascota('La edad debe ser un número entero entre 0 y 100.','editAge'); return;
+      }
+      const problemaFoto = validarFotoEdicionMascota();
+      if (problemaFoto) { mostrarErrorEdicionMascota(problemaFoto,'editPhoto'); return; }
+      const cambios = {
+        name: nombre,
+        species,
+        breed: document.getElementById('editBreed').value.trim() || null,
+        age: edad === '' ? null : Number(edad),
+        sex: document.getElementById('editSex').value || null,
+        description: document.getElementById('editDescription').value.trim() || null,
+        location: document.getElementById('editLocation').value.trim() || null
+      };
+      const archivo = document.getElementById('editPhoto')?.files?.[0];
+      const boton = formulario.querySelector('button[type="submit"]');
+      formulario.dataset.guardando = '1';
+      if (boton) { boton.disabled = true; boton.textContent = 'Guardando cambios...'; }
+      try {
+        const { data: actualizada, error: updateError } = await supabaseClient
+          .from('pets').update(cambios).eq('id',petId).eq('owner_id',authData.user.id)
+          .select('id').single();
+        if (updateError || !actualizada)
+          throw updateError || new Error('No se pudo actualizar la mascota.');
+          let fotoAnteriorPendiente = false;
           if (archivo) {
             try {
               const { data: fotos, error: errorConsulta } = await supabaseClient
@@ -2109,23 +2147,28 @@ async function editarMascota(petId) {
               }
             } catch (errorFoto) {
               console.error('Error al guardar la foto:', errorFoto);
-              alert('Los datos de la mascota se guardaron, pero no se pudo confirmar la foto nueva. ' + errorFoto.message);
+              mostrarErrorEdicionMascota('Los datos de la mascota se guardaron, pero no se pudo confirmar la fotografía nueva: ' + errorFoto.message, 'editPhoto');
               await cargarMascotas();
               return;
             }
           }
-          await cargarMascotas();
-          closeModal();
-          renderPage();
-          toast(fotoAnteriorPendiente
-            ? 'Foto actualizada. Queda revisar la foto anterior en Storage.'
-            : '¡Mascota actualizada correctamente!');
-        } catch (error) {
-          alert('No se pudo actualizar: ' + error.message);
-        } finally {
-          if (boton) boton.disabled = false;
+
+        await cargarMascotas();
+        closeModal();
+        renderPage();
+        toast(fotoAnteriorPendiente
+          ? 'Foto actualizada. Queda revisar la foto anterior en Storage.'
+          : '¡Mascota actualizada correctamente!');
+      } catch (error) {
+        mostrarErrorEdicionMascota('No se pudo actualizar: ' + error.message);
+      } finally {
+        delete formulario.dataset.guardando;
+        if (boton && document.contains(boton)) {
+          boton.disabled = false;
+          boton.textContent = 'Guardar cambios';
         }
-      });
+      }
+    });
   } catch (error) {
     alert('Error al editar mascota: ' + error.message);
   }
