@@ -552,6 +552,9 @@ let intervaloChatAdopcion = null;
 let chatAdopcionCargando = false;
 let limiteMensajesAdopcion = 50;
 let conteoNoLeidosAdopcion = {};
+// Total de mensajes de adopción recibidos y sin leer, independiente de la campanita.
+let mensajesAdopcionNoLeidos = 0;
+let conteoAdopcionConsultando = false;
 let eventosPatitas = [];
 let solicitudesDonacionPatitas = [];
 
@@ -618,6 +621,8 @@ function finalizarCargaInicialPatitas(){
 function limpiarCuentaPatitas(){
   detenerChatAdopcion();
   conteoNoLeidosAdopcion={};
+  mensajesAdopcionNoLeidos=0;
+  conteoAdopcionConsultando=false;
   versionSesionPatitas++;
   detenerCatalogoTiempoReal();
   detenerConsultasNegocioPolling();
@@ -979,17 +984,17 @@ function opcionesPatitas() {
 }
 function renderNav() {
   document.getElementById('nav').innerHTML=opcionesPatitas().map(op=>
-    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}" ${activePage===op.pagina.toLowerCase()?'aria-current="page"':''}><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span>${op.pagina.toLowerCase()==='mensajes'?'<span class="chat-unread-badge hidden" data-unread-count aria-label="Mensajes no leídos"></span>':''}</button>`
+    `<button type="button" class="${activePage===op.pagina.toLowerCase()?'active':''}" onclick="navigate('${op.pagina}')" aria-label="${op.texto}" ${activePage===op.pagina.toLowerCase()?'aria-current="page"':''}><span class="nav-icon">${op.icono}</span><span class="nav-label">${op.texto}</span>${op.pagina.toLowerCase()==='mensajes'?'<span class="chat-unread-badge hidden" data-unread-count aria-label="Mensajes no leídos"></span>':''}${((currentRole==='owner'&&op.pagina.toLowerCase()==='adopciones')||(currentRole==='shelter'&&op.pagina.toLowerCase()==='solicitudes'))?'<span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span>':''}</button>`
   ).join('');
   actualizarIndicadoresChat();
 }
 function abrirMenuExtra(){
   const rutas=currentRole==='owner'
-    ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Eventos']]
+    ? [['💬','Mis mensajes','Mensajes'],['📩','Mis solicitudes','Mis solicitudes'],['🔎','Mascotas perdidas','Perdidas'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Eventos']]
     : currentRole==='shelter'
       ? [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📩','Solicitudes de adopción','Solicitudes'],['🎁','Donaciones','Donaciones'],['📅','Eventos','Campañas']]
       : [['💬','Mis mensajes','Mensajes'],['🔎','Mascotas perdidas','Perdidas'],['📅','Eventos','Eventos'],['🎁','Donaciones','Donaciones']];
-  document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong>${pagina==='Mensajes'?'<span class="chat-unread-badge hidden" data-unread-count></span>':''}<span>›</span></button>`).join('')}</div></div></div>`;
+  document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal menu-modal"><div class="modal-head"><h2>Explora Patitas</h2><button class="close" onclick="closeModal()" aria-label="Cerrar">✕</button></div><div class="more-routes">${rutas.map(([ico,nombre,pagina])=>`<button type="button" onclick="closeModal();navigate('${pagina}')"><span>${ico}</span><strong>${nombre}</strong>${pagina==='Mensajes'?'<span class="chat-unread-badge hidden" data-unread-count></span>':''}${['Mis solicitudes','Solicitudes'].includes(pagina)?'<span class="chat-unread-badge hidden" data-adoption-chat-total></span>':''}<span>›</span></button>`).join('')}</div></div></div>`;
   actualizarIndicadoresChat();
 }
 function portadaPatitas() {
@@ -1002,7 +1007,7 @@ function portadaPatitas() {
    ${acceso('banner-orange','🐾','Mis rescatados','Gestiona los animales que esperan un hogar.','Ver rescatados','Rescatados','🐶 🐱')}
    ${acceso('banner-gold','🎁','Donaciones','Recibe apoyo para los animales de tu refugio.','Ver donaciones','Donaciones','🥣 🦴')}
    ${acceso('banner-peach','📅','Eventos','Comparte campañas y actividades de tu albergue.','Ver eventos','Campañas','🐕 🎈')}
-   </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Mis solicitudes')">📩 Mis solicitudes de adopción <span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Gestionar donaciones <span>›</span></button></div>`;
+   </div><div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Solicitudes')">📩 Solicitudes recibidas <span class="chat-unread-badge hidden" data-adoption-chat-total></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Gestionar donaciones <span>›</span></button></div>`;
   if(currentRole==='business')return `<section class="screen-intro"><span class="tiny-kicker">TU NEGOCIO TAMBIÉN AYUDA</span><h2>Pet Negocio</h2><p>Administra tu catálogo y conecta con la comunidad.</p></section><div class="feature-stack">
     ${acceso('banner-orange','🛍️','Mi catálogo PET','Publica, edita y administra tus productos y servicios.','Ver mi catálogo','Productos y servicios','🥣 🧸')}
     ${acceso('banner-gold','🔎','Mascotas perdidas','Ayuda a encontrar mascotas de la comunidad.','Ver avisos','Perdidas','🐶 🐾')}
@@ -1016,7 +1021,7 @@ function portadaPatitas() {
   </div>
   <div class="home-section-heading"><div><span class="tiny-kicker">TU COMUNIDAD</span><h2>Tus compañeros</h2></div><button type="button" class="text-link" onclick="navigate('Mis mascotas')">Ver todas ›</button></div>
   <div class="pet-list home-pet-list">${mias.length?mias.slice(0,2).map(p=>petTile(p.emoji,p.name,p.kind,p.status,false,p.foto,p.id,p.owner_id)).join(''):'<div class="empty panel">Aún no tienes mascotas registradas. <button class="btn small" onclick="openCreate()">Agregar mascota</button></div>'}</div>
-  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
+  <div class="shortcut-panel"><button onclick="navigate('Mensajes')">💬 Mis mensajes <span class="chat-unread-badge hidden" data-unread-count></span><span>›</span></button><button onclick="navigate('Mis solicitudes')">📩 Mis solicitudes de adopción <span class="chat-unread-badge hidden" data-adoption-chat-total></span><span>›</span></button><button onclick="navigate('Perdidas')">🔎 Mascotas perdidas y encontradas <span>›</span></button><button onclick="navigate('Eventos')">📅 Eventos y campañas <span>›</span></button><button onclick="navigate('Donaciones')">🎁 Solicitudes de ayuda <span>›</span></button></div>`;
 }
 function navigate(page){activePage=page.toLowerCase();if(activePage!=='mensajes'){conversacionActivaId=null;consultaNegocioActivaId=null;detenerConsultasNegocioPolling();}renderNav();renderPage();window.scrollTo({top:0,left:0,behavior:'instant'});if(activePage==='perdidas')cargarAvisos();if(activePage==='eventos'||activePage==='campañas')cargarEventos();if(activePage==='donaciones')cargarDonaciones();if(esPaginaCatalogo())cargarCatalogo();if(activePage==='mensajes')cargarBandejaMensajesPatitas();if(['adopciones','rescatados','solicitudes','mis solicitudes'].includes(activePage))cargarAdopciones();}
 function renderPage(){const root=document.getElementById('dashContent');let title=activePage==='inicio'?'¡Bienvenido, '+escapeHtml(currentUser)+'!':capitalize(activePage);let sub=currentRole==='owner'?'Todo lo que necesitas para cuidar a tus mascotas.':currentRole==='shelter'?'Administra tus publicaciones y conecta con familias adoptantes.':'Administra tu negocio y llega a más petlovers.';
@@ -1282,10 +1287,10 @@ async function eliminarEvento(id){
 function etiquetaEstadoAdopcion(estado){return ({disponible:'Disponible',en_proceso:'En proceso',adoptado:'Adoptado'})[estado]||estado;}
 function etiquetaEstadoSolicitud(estado){return ({pendiente:'Pendiente',aprobada:'Aprobada',rechazada:'Rechazada'})[estado]||estado;}
 function vistaAdopciones(){
-  if(activePage==='mis solicitudes') return `<div class="panel"><h2>📩 Mis solicitudes de adopción</h2><p class="muted">Consulta aquí el estado de tus solicitudes.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
-  if(activePage==='solicitudes') return `<div class="panel"><h2>📩 Solicitudes recibidas</h2><p class="muted">Revisa las solicitudes de adopción de tus publicaciones.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
+  if(activePage==='mis solicitudes') return `<div class="panel"><h2>📩 Mis solicitudes de adopción <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></h2><p class="muted">Consulta aquí el estado de tus solicitudes.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
+  if(activePage==='solicitudes') return `<div class="panel"><h2>📩 Solicitudes recibidas <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></h2><p class="muted">Revisa las solicitudes de adopción de tus publicaciones.</p><div id="adoptionResults" class="empty">Cargando solicitudes...</div></div>`;
   if(activePage==='rescatados') return `<div class="panel"><div class="panel-head"><h2>🐾 Mis rescatados en adopción</h2><button class="btn small" onclick="abrirPublicacionAdopcion()">＋ Publicar mascota</button></div><p class="muted">Publicaciones de adopción creadas por tu albergue.</p></div><div id="adoptionResults" class="empty">Cargando publicaciones...</div>`;
-  return `<div class="panel"><div class="panel-head"><h2>❤️ Mascotas en adopción</h2><button class="btn light small" onclick="navigate('Mis solicitudes')">Mis solicitudes</button></div><p class="muted">Conoce a los animales que buscan una familia. Las solicitudes se envían directamente al albergue.</p></div><div id="adoptionResults" class="empty">Cargando mascotas...</div>`;
+  return `<div class="panel"><div class="panel-head"><h2>❤️ Mascotas en adopción</h2><button class="btn light small" onclick="navigate('Mis solicitudes')">Mis solicitudes <span class="chat-unread-badge hidden" data-adoption-chat-total aria-label="Mensajes de adopción sin leer"></span></button></div><p class="muted">Conoce a los animales que buscan una familia. Las solicitudes se envían directamente al albergue.</p></div><div id="adoptionResults" class="empty">Cargando mascotas...</div>`;
 }
 // La tabla adoption_photos guarda rutas; las imágenes permanecen en Storage.
 function urlFotoAdopcion(ruta){
@@ -1609,6 +1614,38 @@ function detenerChatAdopcion(){
   chatAdopcionCargando=false;
   limiteMensajesAdopcion=50;
 }
+// Revisa todos los chats de adopciones permitidos por RLS, estés donde estés en Patitas.
+// Se usa count exacto para no depender del límite de filas que devuelve Supabase.
+async function consultarNoLeidosChatAdopcion(){
+  if(!usuarioId||currentRole==='business'||conteoAdopcionConsultando)return;
+  const cuenta=usuarioId,sesion=versionSesionPatitas;
+  conteoAdopcionConsultando=true;
+  try{
+    const {count,error}=await supabaseClient.from('adoption_chat_messages')
+      .select('id',{count:'exact',head:true})
+      .neq('sender_id',cuenta).is('read_at',null);
+    if(error)throw error;
+    if(cuenta!==usuarioId||sesion!==versionSesionPatitas)return;
+    mensajesAdopcionNoLeidos=count||0;
+    actualizarIndicadoresAdopcionChat();
+  }catch(err){
+    console.warn('No se pudo consultar el total de mensajes de adopción sin leer:',err);
+  }finally{conteoAdopcionConsultando=false;}
+}
+function actualizarIndicadoresAdopcionChat(){
+  document.querySelectorAll('[data-adoption-chat-total]').forEach(el=>{
+    const cantidad=mensajesAdopcionNoLeidos;
+    el.textContent=cantidad>99?'99+':String(cantidad);
+    el.classList.toggle('hidden',cantidad===0);
+    el.setAttribute('aria-label',`${cantidad} mensajes de adopción sin leer`);
+  });
+  document.querySelectorAll('[data-adoption-chat-count]').forEach(el=>{
+    const cantidad=conteoNoLeidosAdopcion[el.dataset.adoptionChatCount]||0;
+    el.textContent=cantidad>99?'99+':String(cantidad);
+    el.classList.toggle('hidden',cantidad===0);
+    el.setAttribute('aria-label',`${cantidad} mensajes de este chat sin leer`);
+  });
+}
 async function cargarNoLeidosAdopcion(ids){
   if(!usuarioId||!['mis solicitudes','solicitudes'].includes(activePage)||!ids?.length)return;
   const sesion=versionSesionPatitas,cuenta=usuarioId;
@@ -1622,11 +1659,8 @@ async function cargarNoLeidosAdopcion(ids){
       return [id,count||0];
     }));
     if(cuenta!==usuarioId||sesion!==versionSesionPatitas)return;
-    resultados.forEach(([id,cantidad])=>{
-      conteoNoLeidosAdopcion[id]=cantidad;
-      const elemento=document.querySelector(`[data-adoption-chat-count="${id}"]`);
-      if(elemento){elemento.textContent=cantidad>99?'99+':String(cantidad);elemento.classList.toggle('hidden',cantidad===0);}
-    });
+    resultados.forEach(([id,cantidad])=>{conteoNoLeidosAdopcion[id]=cantidad;});
+    actualizarIndicadoresAdopcionChat();
   }catch(err){console.warn('No se pudo consultar los chats de adopciones:',err);}
 }
 async function abrirChatAdopcion(id){
@@ -1700,7 +1734,11 @@ async function cargarChatAdopcion(silencioso=false,conservarPosicion=false){
         .update({read_at:new Date().toISOString()}).eq('request_id',id)
         .neq('sender_id',cuenta).is('read_at',null).in('id',pendientes);
       if(errLeidos)console.warn('No se pudieron marcar mensajes de adopción como leídos:',errLeidos);
-      else if(['mis solicitudes','solicitudes'].includes(activePage))cargarNoLeidosAdopcion([id]);
+      else{
+        // Refrescar tanto la bolita de la solicitud como la del acceso general.
+        if(['mis solicitudes','solicitudes'].includes(activePage))cargarNoLeidosAdopcion([id]);
+        consultarNoLeidosChatAdopcion();
+      }
     }
   }catch(err){
     if(!silencioso&&document.getElementById('adoptionChatMessages')===destino)
@@ -2882,6 +2920,7 @@ function actualizarIndicadoresChat() {
       etiqueta.classList.toggle('hidden', cantidad === 0);
     });
   }
+  actualizarIndicadoresAdopcionChat();
 }
 // Solo se cuentan mensajes recibidos que todavía no fueron leídos.
 // La función SQL usa SECURITY INVOKER y respeta las reglas RLS de cada cuenta.
@@ -2910,6 +2949,7 @@ function iniciarNotificacionesChat() {
   consultarNotificacionesChat();
   consultarNotificacionesNegocio();
   consultarNotificacionesAdopcion();
+  consultarNoLeidosChatAdopcion();
   if(['mis solicitudes','solicitudes'].includes(activePage)){
     const ids=solicitudesAdopcion.map(x=>x.id);if(ids.length)cargarNoLeidosAdopcion(ids);
   }
@@ -2919,6 +2959,7 @@ function iniciarNotificacionesChat() {
       consultarNotificacionesChat();
       consultarNotificacionesNegocio();
       consultarNotificacionesAdopcion();
+      consultarNoLeidosChatAdopcion();
       if(['mis solicitudes','solicitudes'].includes(activePage)){
         const ids=solicitudesAdopcion.map(x=>x.id);if(ids.length)cargarNoLeidosAdopcion(ids);
       }
@@ -3482,7 +3523,10 @@ function detenerCatalogoTiempoReal(){
   catalogoPatitas=[];
 }
 document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden)programarRecargaCatalogo();
+  if(!document.hidden){
+    programarRecargaCatalogo();
+    consultarNoLeidosChatAdopcion();
+  }
 });
 window.addEventListener('focus',()=>programarRecargaCatalogo());
 function vistaCatalogo(){
